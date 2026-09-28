@@ -70,6 +70,9 @@ const platformText = computed(() => {
         正在下载… {{ Math.round(store.updateState.progress?.percent ?? 0) }}%
       </p>
       <p v-else-if="statusText && !hasUpdate" class="status">{{ statusText }}</p>
+      <p v-if="store.updateState.status === 'error' && store.updateState.error" class="login-error">
+        {{ store.updateState.error }}
+      </p>
     </article>
   </section>
 </template>
