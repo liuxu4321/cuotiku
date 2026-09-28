@@ -33,6 +33,12 @@ pnpm build
 pnpm package
 ```
 
+## 发布与自动升级
+
+- 修改 `package.json` 版本号并提交；打标签推送触发 GitHub Actions：`git tag v1.0.0 && git push origin v1.0.0`。
+- `.github/workflows/release.yml` 在 windows-latest 上构建 NSIS 安装包，并通过 electron-builder 发布 GitHub Release（含自动升级元数据 `latest.yml`）；标签带 `-beta` 等后缀时走 beta 通道。
+- 应用内置 electron-updater（Windows/macOS）：启动后与「设置 → 高级」中可检查更新；下载完成后由用户选择重启安装。
+
 ## 架构
 
 - `src/renderer`：Vue 工作台、Canvas 交互、Pinia 状态和设置页
