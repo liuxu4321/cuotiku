@@ -1,4 +1,10 @@
-import type { AuthSession, BookEntryDto, CaptchaInfo, LoginRequest } from '@shared/types'
+import type {
+  AuthSession,
+  BookEntryDto,
+  BookRandomResult,
+  CaptchaInfo,
+  LoginRequest,
+} from '@shared/types'
 import { clearAuthTokens, getAuthToken, getRefreshToken, setAuthTokens } from './config'
 import { getRuntimeConfig } from './runtime-config'
 
@@ -178,6 +184,7 @@ export async function aiErase(imageBase64: string): Promise<AiEraseResult> {
 
 export function bookAddEntry(body: {
   grade: number
+  term: number
   subject: BookEntryDto['subject']
   errorType: BookEntryDto['errorType']
   imageBase64: string
@@ -192,6 +199,20 @@ export function bookAddEntry(body: {
 
 export function bookList(page: number, size: number): Promise<BookPageDto> {
   return request<BookPageDto>(`/api/book/entries?page=${page}&size=${size}`, {
+    auth: true,
+    timeoutMs: 30_000,
+  })
+}
+
+export function bookRandom(body: {
+  grade?: number | null
+  term?: number | null
+  subject?: string | null
+  counts: Record<string, number>
+}): Promise<BookRandomResult> {
+  return request<BookRandomResult>('/api/book/entries/random', {
+    method: 'POST',
+    body,
     auth: true,
     timeoutMs: 30_000,
   })

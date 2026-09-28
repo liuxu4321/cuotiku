@@ -2,10 +2,12 @@ export type PlatformName = 'windows' | 'macos' | 'linux'
 export type RuntimePlatform = string
 export type ThemePreference = 'light' | 'dark' | 'system'
 export type ReleaseChannel = 'stable' | 'beta'
+export type AppRoute = '/' | '/book' | '/settings' | '/about'
 export type LayoutMode = 'auto' | 'single' | 'double'
 export type PaperSize = 'A4' | 'B5'
 export type Subject = '语文' | '数学' | '英语'
 export type ErrorType = '马虎' | '不会' | '概念不清' | '其他'
+export type Term = 1 | 2
 
 export interface PlatformInfo {
   platform: RuntimePlatform
@@ -79,6 +81,7 @@ export interface PagePreview {
 export interface CollectionEntry {
   id: string
   grade: number
+  term: Term | null
   subject: Subject
   errorType: ErrorType
   createdAt: number
@@ -93,6 +96,7 @@ export interface BookAddItem {
 export interface BookEntryDto {
   id: string
   grade: number
+  term: Term | null
   subject: Subject
   errorType: ErrorType
   createdAt: number
@@ -106,8 +110,26 @@ export interface BookEntryDto {
 export interface BookAddRequest {
   resultSetId: string
   grade: number
+  term: Term
   subject: Subject
   items: BookAddItem[]
+}
+export interface BookRandomRequest {
+  grade?: number | null | undefined
+  term?: Term | null | undefined
+  subject?: Subject | null | undefined
+  counts: Partial<Record<ErrorType, number | undefined>>
+}
+export interface BookRandomTypeStat {
+  requested: number
+  selected: number
+  poolSize: number
+}
+export interface BookRandomResult {
+  items: BookEntryDto[]
+  requested: number
+  selected: number
+  byType: Record<string, BookRandomTypeStat>
 }
 export interface BookPageRequest {
   entryIds: string[]
@@ -143,6 +165,7 @@ export interface AppConfig {
   layout: LayoutSettings
   processing: ImageProcessingSettings
   grade: number
+  term: Term
   subject: Subject
   bookDir: string
 }
@@ -151,6 +174,7 @@ export interface DesktopAPI {
   getVersion(): Promise<string>
   getPlatformInfo(): Promise<PlatformInfo>
   getRuntimeConfig(): Promise<RuntimeConfig>
+  onNavigate(callback: (route: AppRoute) => void): () => void
   openExternal(url: string): Promise<void>
   selectImages(): Promise<ImportedImage[]>
   processCrops(request: CropRequest): Promise<CropResultSet>
@@ -168,6 +192,8 @@ export interface DesktopAPI {
   removeBookEntry(id: string): Promise<void>
   buildBookPreview(request: BookPageRequest): Promise<PagePreview>
   printBook(request: BookPageRequest): Promise<boolean>
+  bumpBookPractice(ids: string[]): Promise<void>
+  randomBookEntries(request: BookRandomRequest): Promise<BookRandomResult>
   openLogDirectory(): Promise<void>
   selectDirectory(): Promise<string | null>
   getConfig(): Promise<AppConfig>

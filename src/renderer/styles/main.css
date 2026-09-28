@@ -51,6 +51,15 @@
 .app-identity > span {
   min-width: 0;
 }
+.sidebar .app-identity strong,
+.sidebar .app-identity small {
+  display: inline;
+  white-space: nowrap;
+}
+.sidebar .app-identity small {
+  margin-left: 4px;
+  margin-top: 0;
+}
 .settings-entry {
   align-items: center;
   background: transparent;
@@ -1185,17 +1194,30 @@ nav {
   flex-wrap: wrap;
   gap: 10px;
 }
-.book-count {
-  color: color-mix(in srgb, CanvasText 55%, transparent);
-  font-size: 12px;
+.book-toolbar-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.book-toolbar-actions button,
+.book-right-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
 }
 .random-pick-button {
   align-items: center;
   display: inline-flex;
   gap: 6px;
-  margin-left: auto;
   min-height: 30px;
   padding: 0 10px;
+}
+.delete-confirm-text {
+  font-size: 14px;
+  margin-bottom: 0;
 }
 .random-pick-list {
   display: flex;

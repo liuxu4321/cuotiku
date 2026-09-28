@@ -3,6 +3,8 @@ import type {
   AuthSession,
   BookAddRequest,
   BookPageRequest,
+  BookRandomRequest,
+  BookRandomResult,
   CaptchaInfo,
   CollectionEntry,
   CropRequest,
@@ -20,6 +22,7 @@ export const ipcChannels = {
   appGetVersion: 'app:get-version',
   appGetPlatformInfo: 'app:get-platform-info',
   appGetRuntimeConfig: 'app:get-runtime-config',
+  appNavigate: 'app:navigate',
   appOpenExternal: 'app:open-external',
   imagesSelect: 'images:select',
   imagesProcessCrops: 'images:process-crops',
@@ -37,6 +40,8 @@ export const ipcChannels = {
   bookRemove: 'book:remove',
   bookBuildPreview: 'book:build-preview',
   bookPrint: 'book:print',
+  bookPractice: 'book:practice',
+  bookRandom: 'book:random',
   appOpenLogDirectory: 'app:open-log-directory',
   dialogSelectDirectory: 'dialog:select-directory',
   configGet: 'config:get',
@@ -71,6 +76,8 @@ export interface IpcInvokeMap {
   [ipcChannels.bookRemove]: { args: [id: string]; result: void }
   [ipcChannels.bookBuildPreview]: { args: [request: BookPageRequest]; result: PagePreview }
   [ipcChannels.bookPrint]: { args: [request: BookPageRequest]; result: boolean }
+  [ipcChannels.bookPractice]: { args: [ids: string[]]; result: void }
+  [ipcChannels.bookRandom]: { args: [request: BookRandomRequest]; result: BookRandomResult }
   [ipcChannels.appOpenLogDirectory]: { args: []; result: void }
   [ipcChannels.dialogSelectDirectory]: { args: []; result: string | null }
   [ipcChannels.configGet]: { args: []; result: AppConfig }

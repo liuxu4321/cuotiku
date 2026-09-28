@@ -6,6 +6,7 @@ describe('IPC contracts and schemas', () => {
   it('keeps IPC channel strings centralized', () => {
     expect(new Set(Object.values(ipcChannels)).size).toBe(Object.values(ipcChannels).length)
     expect(ipcChannels.updaterCheck).toBe('updater:check')
+    expect(ipcChannels.appNavigate).toBe('app:navigate')
   })
 
   it('accepts only supported theme values', () => {
@@ -20,6 +21,7 @@ describe('IPC contracts and schemas', () => {
       layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
       processing: { enhance: true, enhanceStrength: 55 },
       grade: 1,
+      term: 1,
       subject: '语文',
       bookDir: '',
     })

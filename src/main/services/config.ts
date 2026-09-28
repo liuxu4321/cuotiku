@@ -21,6 +21,7 @@ const defaultConfig: AppConfig = {
   layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
   processing: { enhance: true, enhanceStrength: 55 },
   grade: 1,
+  term: 1,
   subject: '语文',
   bookDir: join(homedir(), '.cuotiku'),
 }

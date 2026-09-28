@@ -21,6 +21,7 @@ function createFallbackAPI(): DesktopAPI {
     async getRuntimeConfig() {
       return { serverUrl: 'http://127.0.0.1:8080', planetUrl: '', configPath: 'test' }
     },
+    onNavigate: vi.fn(() => () => undefined),
     async openExternal() {},
     selectImages: vi.fn(async () => []),
     processCrops: vi.fn(async () => ({
@@ -54,6 +55,8 @@ function createFallbackAPI(): DesktopAPI {
     removeBookEntry: vi.fn(async () => undefined),
     buildBookPreview: vi.fn(async () => ({ pages: [], columns: 1, scalePercent: 100 })),
     printBook: vi.fn(async () => true),
+    bumpBookPractice: vi.fn(async () => undefined),
+    randomBookEntries: vi.fn(async () => ({ items: [], requested: 0, selected: 0, byType: {} })),
     async openLogDirectory() {},
     async selectDirectory() {
       return null
@@ -65,6 +68,7 @@ function createFallbackAPI(): DesktopAPI {
         layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
         processing: { enhance: true, enhanceStrength: 55 },
         grade: 1,
+        term: 1,
         subject: '语文',
         bookDir: '',
       }

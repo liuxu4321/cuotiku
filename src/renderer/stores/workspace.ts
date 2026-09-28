@@ -139,6 +139,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       return desktopAPI.addBookEntries({
         resultSetId: this.result.resultSetId,
         grade: app.config.grade,
+        term: app.config.term,
         subject: app.config.subject,
         items: errorTypes.map((errorType) => ({ errorType })),
       })

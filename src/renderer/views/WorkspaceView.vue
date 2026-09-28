@@ -27,7 +27,7 @@ import ImageCanvas from '@renderer/components/editor/ImageCanvas.vue'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
-import type { ErrorType, Subject } from '@shared/types'
+import type { ErrorType, Subject, Term } from '@shared/types'
 
 const app = useAppStore()
 const auth = useAuthStore()
@@ -40,6 +40,7 @@ const eraseLabel = computed(() =>
   store.busy ? '正在去手写…' : store.isErased ? '已去手写' : '去手写',
 )
 const grade = computed(() => app.config.grade)
+const term = computed(() => app.config.term)
 const subject = computed(() => app.config.subject)
 const bookDialog = ref(false)
 const bookTypes = ref<ErrorType[]>([])
@@ -134,6 +135,15 @@ async function gradeInput(event: Event): Promise<void> {
     store.error = friendlyError(error)
   }
 }
+async function termInput(event: Event): Promise<void> {
+  const value = Number((event.target as HTMLSelectElement).value) as Term
+  if (value === term.value) return
+  try {
+    await app.saveConfig({ ...app.config, term: value })
+  } catch (error) {
+    store.error = friendlyError(error)
+  }
+}
 async function subjectInput(value: Subject): Promise<void> {
   if (value === subject.value) return
   try {
@@ -168,6 +178,10 @@ async function confirmAddToBook(): Promise<void> {
         <h1>错题收集</h1>
         <select class="inline-select" :value="grade" aria-label="年级" @change="gradeInput">
           <option v-for="item in 9" :key="item" :value="item">{{ item }}年级</option>
+        </select>
+        <select class="inline-select" :value="term" aria-label="学期" @change="termInput">
+          <option :value="1">上学期</option>
+          <option :value="2">下学期</option>
         </select>
       </template>
     </PageHeader>

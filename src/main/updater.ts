@@ -7,26 +7,27 @@ import { canUseBuiltInAutoUpdate } from '@shared/platform'
 import { canStartUpdateCheck, createIdleUpdateState } from '@shared/update-state'
 import type { ReleaseChannel, UpdateState } from '@shared/types'
 
-const updateChannel = (
+const defaultUpdateChannel = (
   process.env.UPDATE_CHANNEL === 'beta' ? 'beta' : 'stable'
 ) satisfies ReleaseChannel
 const { autoUpdater } = electronUpdater
+type UpdateStateListener = (state: UpdateState) => void
 
 export class UpdateService {
-  private state: UpdateState = createIdleUpdateState(
-    updateChannel,
-    canUseBuiltInAutoUpdate(process.platform),
-  )
+  private state: UpdateState
 
   private window: BrowserWindow | null = null
   private checkInProgress = false
+  private channel: ReleaseChannel
+  private readonly listeners = new Set<UpdateStateListener>()
 
-  constructor() {
+  constructor(channel: ReleaseChannel = defaultUpdateChannel) {
+    this.channel = channel
+    this.state = createIdleUpdateState(channel, canUseBuiltInAutoUpdate(process.platform))
     autoUpdater.logger = log
     autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = false
-    autoUpdater.channel = updateChannel
-    autoUpdater.allowPrerelease = updateChannel === 'beta'
+    this.configureChannel(channel)
   }
 
   attachWindow(window: BrowserWindow): void {
@@ -39,6 +40,7 @@ export class UpdateService {
     })
 
     autoUpdater.on('update-available', (info) => {
+      this.checkInProgress = false
       this.setState({
         status: 'available',
         message: `发现新版本 ${info.version}，可下载更新。`,
@@ -55,6 +57,7 @@ export class UpdateService {
       this.setState({
         status: 'downloading',
         message: `正在下载更新… ${Math.round(progress.percent)}%`,
+        ...(this.state.version ? { version: this.state.version } : {}),
         progress: {
           percent: progress.percent,
           transferred: progress.transferred,
@@ -74,13 +77,7 @@ export class UpdateService {
     })
 
     autoUpdater.on('error', (error) => {
-      this.checkInProgress = false
-      this.setState({
-        status: 'error',
-        message: '检查更新失败，请检查网络后重试。',
-        error: error.message,
-      })
-      log.warn('Update error', error)
+      this.handleError(error, '更新失败，请检查网络后重试。')
     })
   }
 
@@ -100,17 +97,50 @@ export class UpdateService {
     return this.state
   }
 
+  onStateChanged(listener: UpdateStateListener): () => void {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  canChangeChannel(): boolean {
+    return !['checking', 'downloading', 'downloaded'].includes(this.state.status)
+  }
+
+  setChannel(channel: ReleaseChannel): UpdateState {
+    if (channel === this.channel) return this.state
+    this.channel = channel
+    this.configureChannel(channel)
+    if (!['downloading', 'downloaded'].includes(this.state.status)) {
+      this.checkInProgress = false
+      this.setState(createIdleUpdateState(channel, canUseBuiltInAutoUpdate(process.platform)))
+    } else {
+      this.setState({
+        status: this.state.status,
+        message: this.state.message,
+        ...(this.state.version ? { version: this.state.version } : {}),
+        ...(this.state.progress ? { progress: this.state.progress } : {}),
+      })
+    }
+    return this.state
+  }
+
   async checkForUpdates(): Promise<UpdateState> {
     if (!canUseBuiltInAutoUpdate(process.platform)) {
       this.setState({
         status: 'not-available',
-        message: 'Linux builds should be updated through the app store or system package manager.',
+        message: 'Linux 版本请通过应用商店或系统包管理器更新。',
       })
       return this.state
     }
 
     if (!app.isPackaged) {
-      return this.runMockUpdateFlow()
+      this.setState({
+        status: 'not-available',
+        message: '开发模式不支持应用内更新，请安装打包版本后验证。',
+      })
+      return this.state
     }
 
     if (this.checkInProgress || !canStartUpdateCheck(this.state)) {
@@ -118,7 +148,13 @@ export class UpdateService {
     }
 
     this.checkInProgress = true
-    await autoUpdater.checkForUpdates()
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch (error) {
+      if (this.state.status !== 'error') {
+        this.handleError(error, '检查更新失败，请检查网络后重试。')
+      }
+    }
     return this.state
   }
 
@@ -128,74 +164,38 @@ export class UpdateService {
   }
 
   async downloadUpdate(): Promise<UpdateState> {
-    if (!app.isPackaged) return this.runMockDownload()
+    if (!app.isPackaged) return this.state
     if (this.state.status !== 'available' || this.checkInProgress) return this.state
     this.checkInProgress = true
     try {
       await autoUpdater.downloadUpdate()
     } catch (error) {
-      this.checkInProgress = false
-      this.setState({
-        status: 'error',
-        message: '下载更新失败，请检查网络后重试。',
-        error: error instanceof Error ? error.message : String(error),
-      })
+      if (this.getState().status !== 'error') {
+        this.handleError(error, '下载更新失败，请检查网络后重试。')
+      }
     }
     return this.state
   }
 
-  private async runMockUpdateFlow(): Promise<UpdateState> {
-    if (this.checkInProgress) return this.state
-    this.checkInProgress = true
-    this.setState({ status: 'checking', message: 'Mock update check in development...' })
-    await wait(350)
-    this.checkInProgress = false
-    this.setState({
-      status: 'available',
-      message: 'Mock update available.',
-      version: '9.9.9-mock',
-    })
-    return this.state
+  private configureChannel(channel: ReleaseChannel): void {
+    autoUpdater.channel = channel
+    autoUpdater.allowPrerelease = channel === 'beta'
   }
 
-  private async runMockDownload(): Promise<UpdateState> {
-    if (this.checkInProgress) return this.state
-    this.checkInProgress = true
-    this.setState({
-      status: 'downloading',
-      message: 'Mock update downloading...',
-      progress: { percent: 35, transferred: 35, total: 100, bytesPerSecond: 1024 },
-    })
-    await wait(400)
-    this.setState({
-      status: 'downloading',
-      message: 'Mock update downloading...',
-      progress: { percent: 80, transferred: 80, total: 100, bytesPerSecond: 2048 },
-    })
-    await wait(400)
+  private handleError(error: unknown, message: string): void {
     this.checkInProgress = false
-    this.setState({
-      status: 'downloaded',
-      message: 'Mock update downloaded. Restart is disabled in development.',
-      version: '9.9.9-mock',
-      progress: { percent: 100, transferred: 100, total: 100, bytesPerSecond: 0 },
-    })
-    return this.state
+    const detail = error instanceof Error ? error.message : String(error)
+    this.setState({ status: 'error', message, error: detail })
+    log.warn('Update error', error)
   }
 
-  private setState(next: Partial<UpdateState>): void {
+  private setState(next: Omit<UpdateState, 'channel'> | UpdateState): void {
     this.state = {
-      ...this.state,
       ...next,
-      channel: updateChannel,
+      channel: this.channel,
     }
     log.info('Update state changed', { status: this.state.status, channel: this.state.channel })
     this.window?.webContents.send(ipcChannels.updaterStateChanged, this.state)
+    for (const listener of this.listeners) listener(this.state)
   }
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
 }

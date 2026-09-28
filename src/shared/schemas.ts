@@ -41,15 +41,18 @@ export const loginRequestSchema = z.object({
 })
 export const subjectSchema = z.enum(['语文', '数学', '英语'])
 export const errorTypeSchema = z.enum(['马虎', '不会', '概念不清', '其他'])
+export const termSchema = z.union([z.literal(1), z.literal(2)])
 export const bookAddRequestSchema = z.object({
   resultSetId: z.string().min(1),
   grade: z.number().int().min(1).max(9),
+  term: termSchema.default(1),
   subject: subjectSchema,
   items: z.array(z.object({ errorType: errorTypeSchema })).min(1),
 })
 export const collectionEntrySchema = z.object({
   id: z.string().min(1),
   grade: z.number().int().min(1).max(9),
+  term: termSchema.nullable().default(null),
   subject: subjectSchema,
   errorType: errorTypeSchema,
   createdAt: z.number(),
@@ -59,6 +62,18 @@ export const collectionEntrySchema = z.object({
   thumbDataUrl: z.string(),
 })
 export const bookEntryIdSchema = z.string().min(1)
+export const bookPracticeSchema = z.array(z.string().min(1)).min(1)
+export const bookRandomRequestSchema = z.object({
+  grade: z.number().int().min(1).max(9).nullish(),
+  term: termSchema.nullish(),
+  subject: subjectSchema.nullish(),
+  counts: z.object({
+    马虎: z.number().int().min(0).max(100).optional(),
+    不会: z.number().int().min(0).max(100).optional(),
+    概念不清: z.number().int().min(0).max(100).optional(),
+    其他: z.number().int().min(0).max(100).optional(),
+  }),
+})
 export const bookPageRequestSchema = z.object({
   entryIds: z.array(z.string().min(1)).min(1),
   paper: paperSizeSchema,
@@ -73,6 +88,7 @@ export const appConfigSchema = z.object({
   layout: layoutSettingsSchema.default({ paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 }),
   processing: processingSettingsSchema.default({ enhance: true, enhanceStrength: 55 }),
   grade: z.number().int().min(1).max(9).default(1),
+  term: termSchema.default(1),
   subject: subjectSchema.default('语文'),
   bookDir: z.string().default(''),
 })

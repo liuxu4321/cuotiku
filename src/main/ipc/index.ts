@@ -7,6 +7,8 @@ import {
   bookAddRequestSchema,
   bookEntryIdSchema,
   bookPageRequestSchema,
+  bookPracticeSchema,
+  bookRandomRequestSchema,
   cropRequestSchema,
   loginRequestSchema,
   pagePreviewRequestSchema,
@@ -23,6 +25,7 @@ import {
   bumpPracticeCount,
   getEntryBuffers,
   listEntries,
+  randomPaper,
   removeEntry,
 } from '@main/services/book-service'
 import {
@@ -142,16 +145,22 @@ export function registerIpcHandlers(updateService: UpdateService): void {
     const layout = { ...getConfig().layout, paper: request.paper }
     const noted = await notedCrops(request.entryIds)
     const { buffers } = await composePages(noted, layout)
-    const success = await printBuffers(
-      BrowserWindow.fromWebContents(event.sender),
-      buffers,
-      request.paper,
-    )
-    if (success) await bumpPracticeCount(request.entryIds)
-    return success
+    return printBuffers(BrowserWindow.fromWebContents(event.sender), buffers, request.paper)
   })
+  handle(ipcChannels.bookPractice, async (value) => {
+    await bumpPracticeCount(bookPracticeSchema.parse(value))
+  })
+  handle(ipcChannels.bookRandom, (value) => randomPaper(bookRandomRequestSchema.parse(value)))
   handle(ipcChannels.configGet, () => getConfig())
-  handle(ipcChannels.configSet, (value) => setConfig(appConfigSchema.parse(value)))
+  handle(ipcChannels.configSet, (value) => {
+    const next = appConfigSchema.parse(value)
+    if (next.releaseChannel !== getConfig().releaseChannel && !updateService.canChangeChannel()) {
+      throw new Error('请先完成当前更新流程，再切换更新通道。')
+    }
+    const config = setConfig(next)
+    updateService.setChannel(config.releaseChannel)
+    return config
+  })
   handle(ipcChannels.updaterGetState, () => updateService.getState())
   handle(ipcChannels.updaterCheck, () => updateService.checkForUpdates())
   handle(ipcChannels.updaterDownload, () => updateService.downloadUpdate())

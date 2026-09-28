@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import {
-  ArrowLeft,
-  Database,
-  Image,
-  KeyRound,
-  LayoutTemplate,
-  Palette,
-  Search,
-  Wrench,
-} from '@lucide/vue'
+import { ArrowLeft, Database, Image, KeyRound, LayoutTemplate, Palette, Search } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
@@ -18,7 +9,7 @@ import { desktopAPI } from '@renderer/services/desktop-api'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
 import type { AppConfig } from '@shared/types'
 
-type Section = 'layout' | 'image' | 'account' | 'book' | 'appearance' | 'advanced'
+type Section = 'layout' | 'image' | 'account' | 'book' | 'appearance'
 const app = useAppStore()
 const auth = useAuthStore()
 const workspace = useWorkspaceStore()
@@ -55,7 +46,6 @@ const sections = [
     icon: Database,
   },
   { id: 'appearance' as const, label: '外观', keywords: '主题 深色 浅色', icon: Palette },
-  { id: 'advanced' as const, label: '高级', keywords: '日志 版本 更新', icon: Wrench },
 ]
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -64,7 +54,7 @@ const filtered = computed(() => {
     : sections
 })
 const title = computed(() => sections.find((item) => item.id === active.value)?.label ?? '设置')
-const showSave = computed(() => active.value !== 'account' && active.value !== 'advanced')
+const showSave = computed(() => active.value !== 'account')
 async function save(): Promise<void> {
   await app.saveConfig(cloneConfig(draft))
   await workspace.refreshCrops()
@@ -87,12 +77,6 @@ async function logout(): Promise<void> {
   } catch (error) {
     authError.value = friendlyError(error)
   }
-}
-const updateMessage = ref('')
-async function checkUpdate(): Promise<void> {
-  updateMessage.value = ''
-  await app.checkForUpdates()
-  updateMessage.value = app.updateState.message
 }
 </script>
 
@@ -232,25 +216,6 @@ async function checkUpdate(): Promise<void> {
                 </button>
               </div>
             </div>
-          </div>
-        </section>
-
-        <section v-else class="preference-section">
-          <h2>高级</h2>
-          <div class="preference-group">
-            <div class="preference-row">
-              <span
-                ><strong>当前版本</strong><small>v{{ app.version }}</small></span
-              >
-              <button
-                type="button"
-                :disabled="app.updateState.status === 'checking'"
-                @click="checkUpdate"
-              >
-                {{ app.updateState.status === 'checking' ? '检查中…' : '发现新版本' }}
-              </button>
-            </div>
-            <p v-if="updateMessage" class="preference-hint">{{ updateMessage }}</p>
           </div>
         </section>
       </div>

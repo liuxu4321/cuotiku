@@ -49,6 +49,15 @@ export const useBookStore = defineStore('book', {
         this.previewBusy = false
       }
     },
+    async bumpPractice(ids: string[]) {
+      if (!ids.length) return
+      try {
+        await desktopAPI.bumpBookPractice(ids.slice())
+        await this.refresh()
+      } catch (error) {
+        this.error = friendlyError(error)
+      }
+    },
     async printBook(entryIds: string[], paper: PaperSize): Promise<boolean> {
       const ids = entryIds.slice()
       if (!ids.length || this.printing) return false

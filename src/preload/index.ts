@@ -1,12 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { ipcChannels } from '@shared/ipc'
 import type { DesktopAPI } from './api'
-import type { AuthSession, UpdateState } from '@shared/types'
+import type { AppRoute, AuthSession, UpdateState } from '@shared/types'
 
 const api: DesktopAPI = {
   getVersion: () => ipcRenderer.invoke(ipcChannels.appGetVersion),
   getPlatformInfo: () => ipcRenderer.invoke(ipcChannels.appGetPlatformInfo),
   getRuntimeConfig: () => ipcRenderer.invoke(ipcChannels.appGetRuntimeConfig),
+  onNavigate: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, route: AppRoute): void => {
+      callback(route)
+    }
+    ipcRenderer.on(ipcChannels.appNavigate, listener)
+    return () => {
+      ipcRenderer.removeListener(ipcChannels.appNavigate, listener)
+    }
+  },
   openExternal: (url) => ipcRenderer.invoke(ipcChannels.appOpenExternal, url),
   selectImages: () => ipcRenderer.invoke(ipcChannels.imagesSelect),
   processCrops: (request) => ipcRenderer.invoke(ipcChannels.imagesProcessCrops, request),
@@ -32,6 +41,8 @@ const api: DesktopAPI = {
   removeBookEntry: (id) => ipcRenderer.invoke(ipcChannels.bookRemove, id),
   buildBookPreview: (request) => ipcRenderer.invoke(ipcChannels.bookBuildPreview, request),
   printBook: (request) => ipcRenderer.invoke(ipcChannels.bookPrint, request),
+  bumpBookPractice: (ids) => ipcRenderer.invoke(ipcChannels.bookPractice, ids),
+  randomBookEntries: (request) => ipcRenderer.invoke(ipcChannels.bookRandom, request),
   openLogDirectory: () => ipcRenderer.invoke(ipcChannels.appOpenLogDirectory),
   selectDirectory: () => ipcRenderer.invoke(ipcChannels.dialogSelectDirectory),
   getConfig: () => ipcRenderer.invoke(ipcChannels.configGet),

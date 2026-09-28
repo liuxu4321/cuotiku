@@ -10,8 +10,7 @@ const available = computed(() => status.value === 'available')
 const downloading = computed(() => status.value === 'downloading')
 const downloaded = computed(() => status.value === 'downloaded')
 const hasUpdate = computed(() => available.value || downloading.value || downloaded.value)
-const isMock = computed(() => /mock/i.test(store.updateState.message))
-const statusText = computed(() => (isMock.value ? '' : store.updateState.message))
+const statusText = computed(() => store.updateState.message)
 const platformText = computed(() => {
   const info = store.platformInfo
   if (!info) return '获取中…'

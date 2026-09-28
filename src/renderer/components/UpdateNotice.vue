@@ -7,12 +7,10 @@ const store = useAppStore()
 const dismissed = ref<string | null>(null)
 const status = computed(() => store.updateState.status)
 const version = computed(() => store.updateState.version ?? '')
-const isMock = computed(() => /mock/i.test(version.value))
 const downloaded = computed(() => status.value === 'downloaded')
 const downloading = computed(() => status.value === 'downloading')
 const available = computed(() => status.value === 'available')
 const visible = computed(() => {
-  if (isMock.value) return false
   if (!['available', 'downloading', 'downloaded'].includes(status.value)) return false
   return dismissed.value !== version.value
 })
@@ -40,7 +38,7 @@ function install(): void {
       正在下载… {{ Math.round(store.updateState.progress.percent) }}%
     </p>
     <p v-else-if="downloaded">更新已下载完成，重启后安装。</p>
-    <p v-else>正在准备下载…</p>
+    <p v-else>新版本已就绪，可以开始下载。</p>
     <progress
       v-if="downloading && store.updateState.progress"
       max="100"

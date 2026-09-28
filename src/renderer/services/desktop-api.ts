@@ -7,6 +7,7 @@ let previewConfig: AppConfig = {
   layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
   processing: { enhance: true, enhanceStrength: 55 },
   grade: 1,
+  term: 1,
   subject: '语文',
   bookDir: '',
 }
@@ -33,6 +34,7 @@ const previewAPI: DesktopAPI = {
     planetUrl: '',
     configPath: 'yycuotiku.config.json',
   }),
+  onNavigate: () => () => undefined,
   openExternal: async (url) => {
     window.open(url, '_blank', 'noopener,noreferrer')
   },
@@ -52,6 +54,8 @@ const previewAPI: DesktopAPI = {
   removeBookEntry: desktopOnly,
   buildBookPreview: desktopOnly,
   printBook: desktopOnly,
+  bumpBookPractice: desktopOnly,
+  randomBookEntries: desktopOnly,
   openLogDirectory: async () => undefined,
   selectDirectory: async () => null,
   getConfig: async () => ({ ...previewConfig }),

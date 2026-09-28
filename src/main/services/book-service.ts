@@ -1,5 +1,12 @@
 import sharp from 'sharp'
-import type { BookAddRequest, BookEntryDto, CollectionEntry, ErrorType } from '@shared/types'
+import type {
+  BookAddRequest,
+  BookEntryDto,
+  BookRandomRequest,
+  BookRandomResult,
+  CollectionEntry,
+  ErrorType,
+} from '@shared/types'
 import * as api from './api-client'
 import { getResultSet, toDataUrl } from './image-service'
 
@@ -15,6 +22,7 @@ export async function addEntries(request: BookAddRequest): Promise<number> {
     if (!crop) continue
     await api.bookAddEntry({
       grade: request.grade,
+      term: request.term,
       subject: request.subject,
       errorType: request.items[index]?.errorType ?? '其他',
       imageBase64: crop.buffer.toString('base64'),
@@ -37,6 +45,7 @@ export async function listEntries(): Promise<CollectionEntry[]> {
     entries.push({
       id: item.id,
       grade: item.grade,
+      term: item.term ?? null,
       subject: item.subject,
       errorType: item.errorType,
       createdAt: item.createdAt,
@@ -84,6 +93,20 @@ export async function getEntryBuffers(
     }
   }
   return result
+}
+
+export async function randomPaper(request: BookRandomRequest): Promise<BookRandomResult> {
+  const counts: Record<string, number> = {}
+  for (const [type, value] of Object.entries(request.counts)) {
+    if (typeof value === 'number' && value > 0) counts[type] = value
+  }
+  if (!Object.keys(counts).length) throw new Error('抽取数量需大于0。')
+  return api.bookRandom({
+    grade: request.grade ?? null,
+    term: request.term ?? null,
+    subject: request.subject ?? null,
+    counts,
+  })
 }
 
 export async function bumpPracticeCount(ids: string[]): Promise<void> {
