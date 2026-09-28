@@ -4,12 +4,11 @@ import electronUpdater from 'electron-updater'
 import log from 'electron-log/main'
 import { ipcChannels } from '@shared/ipc'
 import { canUseBuiltInAutoUpdate } from '@shared/platform'
+import { resolveReleaseChannel, toUpdateManifestChannel } from '@shared/release-channel'
 import { canStartUpdateCheck, createIdleUpdateState } from '@shared/update-state'
 import type { ReleaseChannel, UpdateState } from '@shared/types'
 
-const defaultUpdateChannel = (
-  process.env.UPDATE_CHANNEL === 'beta' ? 'beta' : 'stable'
-) satisfies ReleaseChannel
+const defaultUpdateChannel = resolveReleaseChannel(app.getVersion(), process.env.UPDATE_CHANNEL)
 const { autoUpdater } = electronUpdater
 type UpdateStateListener = (state: UpdateState) => void
 
@@ -178,7 +177,7 @@ export class UpdateService {
   }
 
   private configureChannel(channel: ReleaseChannel): void {
-    autoUpdater.channel = channel
+    autoUpdater.channel = toUpdateManifestChannel(channel)
     autoUpdater.allowPrerelease = channel === 'beta'
   }
 

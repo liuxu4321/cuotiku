@@ -9,8 +9,27 @@ permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.meta.outputs.channel }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - id: meta
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == *-* ]]; then
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
-    name: Build and publish on windows-latest
+    needs: prepare
+    name: Build Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,14 +50,62 @@ jobs:
           pnpm typecheck
           pnpm test
 
-      - name: Build and publish
-        run: pnpm release
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$PACKAGE_VERSION" != "$TAG_VERSION" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version ${PACKAGE_VERSION}." >&2
+            exit 1
+          fi
+
+      - name: Build release assets
+        shell: bash
+        run: |
+          pnpm build
+          pnpm exec electron-builder --publish never --config.publish.channel="${UPDATE_CHANNEL}"
+        env:
+          UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          shopt -s nullglob
+          INSTALLERS=(release/*.exe)
+          BLOCKMAPS=(release/*.exe.blockmap)
+          if [[ "${#INSTALLERS[@]}" -ne 1 ]]; then
+            echo "Expected exactly one Windows installer, found ${#INSTALLERS[@]}." >&2
+            exit 1
+          fi
+          if [[ "${#BLOCKMAPS[@]}" -ne 1 ]]; then
+            echo "Expected exactly one blockmap, found ${#BLOCKMAPS[@]}." >&2
+            exit 1
+          fi
+          test -f "release/${UPDATE_CHANNEL}.yml"
+        env:
+          UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+
+      - name: Publish GitHub release
+        shell: bash
+        run: |
+          shopt -s nullglob
+          RELEASE_FILES=(release/*.exe release/*.exe.blockmap "release/${UPDATE_CHANNEL}.yml")
+          RELEASE_ARGS=(release create "${GITHUB_REF_NAME}" "${RELEASE_FILES[@]}" --verify-tag --title "${GITHUB_REF_NAME}" --notes "盈盈错题库 ${GITHUB_REF_NAME}")
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            RELEASE_ARGS+=(--prerelease)
+          fi
+          gh "${RELEASE_ARGS[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPDATE_CHANNEL: ${{ contains(github.ref_name, '-') && 'beta' || 'stable' }}
+          UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+          IS_PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: yycuotiku-windows
-          path: release/**
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/*.yml
           if-no-files-found: error

@@ -2,6 +2,7 @@ appId: com.yycuotiku.app
 productName: 盈盈错题库
 artifactName: yycuotiku-${version}-${os}-${arch}.${ext}
 asar: true
+generateUpdatesFilesForAllChannels: true
 directories:
   buildResources: build
   output: release
@@ -17,6 +18,7 @@ publish:
   provider: github
   owner: liuxu4321
   repo: cuotiku
+  channel: latest
   releaseType: release
 win:
   target:
