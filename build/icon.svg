@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="232" fill="#256f73"/>
+  <text
+    x="512"
+    y="450"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif"
+    font-size="440"
+    font-weight="700"
+    fill="#ffffff"
+  >盈</text>
+  <path d="M272 760 h480" stroke="#ffffff" stroke-width="56" stroke-linecap="round" opacity="0.92"/>
+  <path d="M342 872 h340" stroke="#ffffff" stroke-width="44" stroke-linecap="round" opacity="0.55"/>
+</svg>
