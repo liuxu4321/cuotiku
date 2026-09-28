@@ -3,31 +3,39 @@ import type { OpenDialogOptions } from 'electron'
 import log from 'electron-log/main'
 import { ipcChannels, type IpcChannel, type IpcInvokeMap } from '@shared/ipc'
 import {
-  analogyDocumentSchema,
-  analogyGenerateRequestSchema,
   appConfigSchema,
   bookAddRequestSchema,
   bookEntryIdSchema,
   bookPageRequestSchema,
   cropRequestSchema,
-  handwritingEraseRequestSchema,
+  loginRequestSchema,
   pagePreviewRequestSchema,
 } from '@shared/schemas'
 import { canUseBuiltInAutoUpdate, getPlatformName } from '@shared/platform'
 import { getConfig, setConfig } from '@main/services/config'
 import { assertAllowedExternalUrl } from '@main/services/url'
 import { processCrops, registerImage } from '@main/services/image-service'
-import { eraseHandwriting } from '@main/services/tencent-erase'
-import { addEntries, listEntries, removeEntry } from '@main/services/collection-service'
-import { generateAnalogy, printAnalogy } from '@main/services/analogy-service'
+import { eraseHandwriting } from '@main/services/erase-service'
+import { getCaptcha, login, logout, me, onTokenCleared } from '@main/services/api-client'
+import { getRuntimeConfig } from '@main/services/runtime-config'
 import {
-  buildBookPages,
+  addEntries,
+  bumpPracticeCount,
+  getEntryBuffers,
+  listEntries,
+  removeEntry,
+} from '@main/services/book-service'
+import {
+  applyBookNote,
+  BOOK_NOTES,
   buildPage,
+  composePages,
   printBuffers,
   printPage,
   savePage,
 } from '@main/services/output-service'
 import type { UpdateService } from '@main/updater'
+import type { AuthSession } from '@shared/types'
 
 type HandlerResult<C extends keyof IpcInvokeMap> =
   Promise<IpcInvokeMap[C]['result']> | IpcInvokeMap[C]['result']
@@ -41,6 +49,7 @@ function handle<C extends keyof IpcInvokeMap>(
 }
 
 export function registerIpcHandlers(updateService: UpdateService): void {
+  onTokenCleared(() => broadcastAuth(null))
   handle(ipcChannels.appGetVersion, () => app.getVersion())
   handle(ipcChannels.appGetPlatformInfo, () => ({
     platform: process.platform,
@@ -56,6 +65,7 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   handle(ipcChannels.appOpenExternal, async (url) =>
     shell.openExternal(assertAllowedExternalUrl(url)).then(() => undefined),
   )
+  handle(ipcChannels.appGetRuntimeConfig, () => getRuntimeConfig())
   ipcMain.handle(ipcChannels.imagesSelect, async (event) => {
     const parent = BrowserWindow.fromWebContents(event.sender)
     const options: OpenDialogOptions = {
@@ -70,8 +80,19 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   })
   handle(ipcChannels.imagesProcessCrops, (value) => processCrops(cropRequestSchema.parse(value)))
   handle(ipcChannels.imagesEraseHandwriting, (value) =>
-    eraseHandwriting(handwritingEraseRequestSchema.parse(value)),
+    eraseHandwriting(cropRequestSchema.parse(value)),
   )
+  handle(ipcChannels.authCaptcha, () => getCaptcha())
+  handle(ipcChannels.authLogin, async (value) => {
+    const session = await login(loginRequestSchema.parse(value))
+    broadcastAuth(session)
+    return session
+  })
+  handle(ipcChannels.authLogout, async () => {
+    await logout()
+    broadcastAuth(null)
+  })
+  handle(ipcChannels.authMe, () => me())
   handle(ipcChannels.pageBuildPreview, async (value) => {
     const request = pagePreviewRequestSchema.parse(value)
     return (await buildPage(request.resultSetId, request.layout)).preview
@@ -107,27 +128,44 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   })
   handle(ipcChannels.bookAdd, (value) => addEntries(bookAddRequestSchema.parse(value)))
   handle(ipcChannels.bookList, () => listEntries())
-  handle(ipcChannels.bookRemove, (id) => removeEntry(bookEntryIdSchema.parse(id)))
-  handle(ipcChannels.analogyGenerate, (value) =>
-    generateAnalogy(analogyGenerateRequestSchema.parse(value).entryIds),
-  )
-  ipcMain.handle(ipcChannels.analogyPrint, async (event, value) =>
-    printAnalogy(BrowserWindow.fromWebContents(event.sender), analogyDocumentSchema.parse(value)),
-  )
+  handle(ipcChannels.bookRemove, async (id) => {
+    await removeEntry(bookEntryIdSchema.parse(id))
+  })
   handle(ipcChannels.bookBuildPreview, async (value) => {
     const request = bookPageRequestSchema.parse(value)
     const layout = { ...getConfig().layout, paper: request.paper }
-    return (await buildBookPages(request.entryIds, layout)).preview
+    const noted = await notedCrops(request.entryIds)
+    return (await composePages(noted, layout)).preview
   })
   ipcMain.handle(ipcChannels.bookPrint, async (event, value) => {
     const request = bookPageRequestSchema.parse(value)
     const layout = { ...getConfig().layout, paper: request.paper }
-    const { buffers } = await buildBookPages(request.entryIds, layout)
-    return printBuffers(BrowserWindow.fromWebContents(event.sender), buffers, request.paper)
+    const noted = await notedCrops(request.entryIds)
+    const { buffers } = await composePages(noted, layout)
+    const success = await printBuffers(
+      BrowserWindow.fromWebContents(event.sender),
+      buffers,
+      request.paper,
+    )
+    if (success) await bumpPracticeCount(request.entryIds)
+    return success
   })
   handle(ipcChannels.configGet, () => getConfig())
   handle(ipcChannels.configSet, (value) => setConfig(appConfigSchema.parse(value)))
   handle(ipcChannels.updaterGetState, () => updateService.getState())
   handle(ipcChannels.updaterCheck, () => updateService.checkForUpdates())
+  handle(ipcChannels.updaterDownload, () => updateService.downloadUpdate())
   handle(ipcChannels.updaterInstall, () => updateService.quitAndInstall())
+}
+
+function broadcastAuth(session: AuthSession | null): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send(ipcChannels.authStateChanged, session)
+  }
+}
+
+async function notedCrops(entryIds: string[]) {
+  const crops = await getEntryBuffers(entryIds)
+  if (!crops.length) throw new Error('请先在错题集中勾选要组卷的错题。')
+  return Promise.all(crops.map((crop) => applyBookNote(crop, BOOK_NOTES[crop.errorType])))
 }

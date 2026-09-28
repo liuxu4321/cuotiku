@@ -23,7 +23,7 @@ export class UpdateService {
 
   constructor() {
     autoUpdater.logger = log
-    autoUpdater.autoDownload = true
+    autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.channel = updateChannel
     autoUpdater.allowPrerelease = updateChannel === 'beta'
@@ -35,26 +35,26 @@ export class UpdateService {
 
   initialize(): void {
     autoUpdater.on('checking-for-update', () => {
-      this.setState({ status: 'checking', message: 'Checking for updates...' })
+      this.setState({ status: 'checking', message: '正在检测新版本…' })
     })
 
     autoUpdater.on('update-available', (info) => {
       this.setState({
         status: 'available',
-        message: `Version ${info.version} is available. Downloading...`,
+        message: `发现新版本 ${info.version}，可下载更新。`,
         version: info.version,
       })
     })
 
     autoUpdater.on('update-not-available', () => {
       this.checkInProgress = false
-      this.setState({ status: 'not-available', message: 'You are running the latest version.' })
+      this.setState({ status: 'not-available', message: '当前已是最新版本。' })
     })
 
     autoUpdater.on('download-progress', (progress) => {
       this.setState({
         status: 'downloading',
-        message: 'Downloading update...',
+        message: `正在下载更新… ${Math.round(progress.percent)}%`,
         progress: {
           percent: progress.percent,
           transferred: progress.transferred,
@@ -68,7 +68,7 @@ export class UpdateService {
       this.checkInProgress = false
       this.setState({
         status: 'downloaded',
-        message: 'Update downloaded. Restart to install when you are ready.',
+        message: '更新已下载完成，可重启安装。',
         version: info.version,
       })
     })
@@ -77,7 +77,7 @@ export class UpdateService {
       this.checkInProgress = false
       this.setState({
         status: 'error',
-        message: 'Update check failed. Please check your network and try again.',
+        message: '检查更新失败，请检查网络后重试。',
         error: error.message,
       })
       log.warn('Update error', error)
@@ -88,6 +88,12 @@ export class UpdateService {
     setTimeout(() => {
       void this.checkForUpdates()
     }, 15_000)
+    setInterval(
+      () => {
+        void this.checkForUpdates()
+      },
+      4 * 60 * 60 * 1000,
+    )
   }
 
   getState(): UpdateState {
@@ -121,28 +127,57 @@ export class UpdateService {
     autoUpdater.quitAndInstall(false, true)
   }
 
+  async downloadUpdate(): Promise<UpdateState> {
+    if (!app.isPackaged) return this.runMockDownload()
+    if (this.state.status !== 'available' || this.checkInProgress) return this.state
+    this.checkInProgress = true
+    try {
+      await autoUpdater.downloadUpdate()
+    } catch (error) {
+      this.checkInProgress = false
+      this.setState({
+        status: 'error',
+        message: '下载更新失败，请检查网络后重试。',
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+    return this.state
+  }
+
   private async runMockUpdateFlow(): Promise<UpdateState> {
     if (this.checkInProgress) return this.state
     this.checkInProgress = true
     this.setState({ status: 'checking', message: 'Mock update check in development...' })
     await wait(350)
+    this.checkInProgress = false
     this.setState({
       status: 'available',
-      message: 'Mock beta/stable update available. Simulating download...',
-      version: '0.1.1-mock',
+      message: 'Mock update available.',
+      version: '9.9.9-mock',
     })
-    await wait(350)
+    return this.state
+  }
+
+  private async runMockDownload(): Promise<UpdateState> {
+    if (this.checkInProgress) return this.state
+    this.checkInProgress = true
     this.setState({
       status: 'downloading',
       message: 'Mock update downloading...',
-      progress: { percent: 65, transferred: 65, total: 100, bytesPerSecond: 1024 },
+      progress: { percent: 35, transferred: 35, total: 100, bytesPerSecond: 1024 },
     })
-    await wait(350)
+    await wait(400)
+    this.setState({
+      status: 'downloading',
+      message: 'Mock update downloading...',
+      progress: { percent: 80, transferred: 80, total: 100, bytesPerSecond: 2048 },
+    })
+    await wait(400)
     this.checkInProgress = false
     this.setState({
       status: 'downloaded',
       message: 'Mock update downloaded. Restart is disabled in development.',
-      version: '0.1.1-mock',
+      version: '9.9.9-mock',
       progress: { percent: 100, transferred: 100, total: 100, bytesPerSecond: 0 },
     })
     return this.state

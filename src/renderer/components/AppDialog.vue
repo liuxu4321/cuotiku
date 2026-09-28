@@ -6,6 +6,7 @@ const props = defineProps<{
   open: boolean
   title: string
   description?: string
+  wide?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,6 +39,7 @@ function closeFromBackdrop(event: MouseEvent): void {
   <dialog
     ref="dialog"
     class="app-dialog"
+    :class="{ 'app-dialog-wide': wide }"
     :aria-labelledby="titleId"
     @cancel.prevent="close"
     @click="closeFromBackdrop"

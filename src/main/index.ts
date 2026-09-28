@@ -7,6 +7,8 @@ import { UpdateService } from '@main/updater'
 
 configureLogging()
 
+app.setName('盈盈错题库')
+
 const singleInstanceLock = app.requestSingleInstanceLock()
 const updateService = new UpdateService()
 
@@ -22,7 +24,7 @@ if (!singleInstanceLock) {
   })
 
   app.whenReady().then(() => {
-    electronApp.setAppUserModelId('com.quickwrongquestion.printer')
+    electronApp.setAppUserModelId('com.yycuotiku.app')
 
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)

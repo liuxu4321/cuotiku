@@ -18,6 +18,9 @@ function createFallbackAPI(): DesktopAPI {
         canAutoUpdate: false,
       }
     },
+    async getRuntimeConfig() {
+      return { serverUrl: 'http://127.0.0.1:8080', planetUrl: '', configPath: 'test' }
+    },
     async openExternal() {},
     selectImages: vi.fn(async () => []),
     processCrops: vi.fn(async () => ({
@@ -32,14 +35,23 @@ function createFallbackAPI(): DesktopAPI {
       crops: [],
       erased: true,
     })),
+    getCaptcha: vi.fn(async () => ({ captchaId: 'c', imageBase64: '', expiresInSeconds: 300 })),
+    login: vi.fn(async () => ({
+      phone: '13800000000',
+      memberNo: null,
+      role: 'USER' as const,
+      aiEnabled: true,
+      tokenExpiresAt: null,
+    })),
+    logout: vi.fn(async () => undefined),
+    getAuthSession: vi.fn(async () => null),
+    onAuthStateChanged: vi.fn(() => () => undefined),
     buildPagePreview: vi.fn(async () => ({ pages: [], columns: 1, scalePercent: 100 })),
     savePage: vi.fn(async () => null),
     printPage: vi.fn(async () => true),
     listBookEntries: vi.fn(async () => []),
-    addBookEntries: vi.fn(async () => []),
-    removeBookEntry: vi.fn(async () => []),
-    generateAnalogy: vi.fn(async () => ({ title: '举一反三练习', createdAt: 0, items: [] })),
-    printAnalogy: vi.fn(async () => true),
+    addBookEntries: vi.fn(async () => 0),
+    removeBookEntry: vi.fn(async () => undefined),
     buildBookPreview: vi.fn(async () => ({ pages: [], columns: 1, scalePercent: 100 })),
     printBook: vi.fn(async () => true),
     async openLogDirectory() {},
@@ -52,9 +64,6 @@ function createFallbackAPI(): DesktopAPI {
         releaseChannel: 'stable',
         layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
         processing: { enhance: true, enhanceStrength: 55 },
-        tencentSecretId: '',
-        rememberTencentSecretKey: false,
-        tencentSecretKey: '',
         grade: 1,
         subject: '语文',
         bookDir: '',
@@ -67,6 +76,9 @@ function createFallbackAPI(): DesktopAPI {
       return { status: 'not-available', channel: 'stable', message: 'Unavailable' }
     },
     async checkForUpdates() {
+      return { status: 'not-available', channel: 'stable', message: 'Unavailable' }
+    },
+    async downloadUpdate() {
       return { status: 'not-available', channel: 'stable', message: 'Unavailable' }
     },
     async installUpdate() {},

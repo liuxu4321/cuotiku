@@ -6,8 +6,9 @@ import log from 'electron-log/main'
 import { appConfigSchema, releaseChannelSchema, windowBoundsSchema } from '@shared/schemas'
 import type { AppConfig, WindowBounds } from '@shared/types'
 
-interface PersistedConfig extends Omit<AppConfig, 'tencentSecretKey'> {
-  encryptedTencentSecretKey?: string
+interface PersistedConfig extends AppConfig {
+  encryptedAuthToken?: string
+  encryptedRefreshToken?: string
 }
 interface StoreShape {
   config: PersistedConfig
@@ -19,9 +20,6 @@ const defaultConfig: AppConfig = {
   releaseChannel: releaseChannelSchema.catch('stable').parse(process.env.UPDATE_CHANNEL),
   layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
   processing: { enhance: true, enhanceStrength: 55 },
-  tencentSecretId: '',
-  rememberTencentSecretKey: false,
-  tencentSecretKey: '',
   grade: 1,
   subject: '语文',
   bookDir: join(homedir(), '.cuotiku'),
@@ -31,7 +29,7 @@ const store = new Store<StoreShape>({
   name: 'settings',
   clearInvalidConfig: true,
   defaults: {
-    config: { ...defaultConfig, tencentSecretKey: undefined } as unknown as PersistedConfig,
+    config: { ...defaultConfig } as unknown as PersistedConfig,
     windowBounds: defaultWindowBounds,
   },
 })
@@ -47,13 +45,7 @@ function decryptSecret(value?: string): string {
 
 export function getConfig(): AppConfig {
   const persisted = store.get('config')
-  const candidate = {
-    ...persisted,
-    tencentSecretKey: persisted.rememberTencentSecretKey
-      ? decryptSecret(persisted.encryptedTencentSecretKey)
-      : '',
-  }
-  const parsed = appConfigSchema.safeParse(candidate)
+  const parsed = appConfigSchema.safeParse(persisted)
   if (parsed.success) return parsed.data
   log.warn('Invalid app config detected; falling back to defaults')
   return defaultConfig
@@ -61,13 +53,47 @@ export function getConfig(): AppConfig {
 
 export function setConfig(config: AppConfig): AppConfig {
   const parsed = appConfigSchema.parse(config)
-  const { tencentSecretKey, ...plain } = parsed
-  let encryptedTencentSecretKey: string | undefined
-  if (parsed.rememberTencentSecretKey && tencentSecretKey && safeStorage.isEncryptionAvailable()) {
-    encryptedTencentSecretKey = safeStorage.encryptString(tencentSecretKey).toString('base64')
-  }
-  store.set('config', { ...plain, encryptedTencentSecretKey })
+  const persisted = store.get('config')
+  store.set('config', {
+    ...parsed,
+    encryptedAuthToken: persisted.encryptedAuthToken,
+    encryptedRefreshToken: persisted.encryptedRefreshToken,
+  })
   return parsed
+}
+
+export function getAuthToken(): string {
+  const encrypted = store.get('config').encryptedAuthToken
+  return encrypted ? decryptSecret(encrypted) : ''
+}
+
+export function getRefreshToken(): string {
+  const encrypted = store.get('config').encryptedRefreshToken
+  return encrypted ? decryptSecret(encrypted) : ''
+}
+
+export function setAuthTokens(token: string, refreshToken: string): void {
+  const persisted = store.get('config')
+  const canEncrypt = safeStorage.isEncryptionAvailable()
+  store.set('config', {
+    ...persisted,
+    encryptedAuthToken:
+      token && canEncrypt ? safeStorage.encryptString(token).toString('base64') : undefined,
+    encryptedRefreshToken:
+      refreshToken && canEncrypt
+        ? safeStorage.encryptString(refreshToken).toString('base64')
+        : undefined,
+  })
+}
+
+export function clearAuthTokens(): void {
+  const persisted = store.get('config')
+  if (!persisted.encryptedAuthToken && !persisted.encryptedRefreshToken) return
+  store.set('config', {
+    ...persisted,
+    encryptedAuthToken: undefined,
+    encryptedRefreshToken: undefined,
+  })
 }
 
 export function getSavedWindowBounds(): WindowBounds {

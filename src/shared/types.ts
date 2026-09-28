@@ -75,10 +75,6 @@ export interface PagePreview {
   columns: number
   scalePercent: number
 }
-export interface HandwritingEraseRequest extends CropRequest {
-  secretId: string
-  secretKey: string
-}
 
 export interface CollectionEntry {
   id: string
@@ -88,10 +84,24 @@ export interface CollectionEntry {
   createdAt: number
   width: number
   height: number
+  practiceCount: number
   thumbDataUrl: string
 }
 export interface BookAddItem {
   errorType: ErrorType
+}
+export interface BookEntryDto {
+  id: string
+  grade: number
+  subject: Subject
+  errorType: ErrorType
+  createdAt: number
+  createdAtText: string
+  width: number
+  height: number
+  practiceCount: number
+  imageUrl: string
+  thumbUrl: string
 }
 export interface BookAddRequest {
   resultSetId: string
@@ -99,34 +109,39 @@ export interface BookAddRequest {
   subject: Subject
   items: BookAddItem[]
 }
-export interface AnalogyItem {
-  entryId: string
-  thumbDataUrl: string
-  subject: Subject
-  grade: number
-  errorType: ErrorType
-  questions: string[]
-}
-export interface AnalogyDocument {
-  title: string
-  createdAt: number
-  items: AnalogyItem[]
-}
-export interface AnalogyGenerateRequest {
-  entryIds: string[]
-}
 export interface BookPageRequest {
   entryIds: string[]
   paper: PaperSize
+}
+export interface CaptchaInfo {
+  captchaId: string
+  imageBase64: string
+  expiresInSeconds: number
+}
+export interface LoginRequest {
+  phone: string
+  password: string
+  captchaId: string
+  captchaCode: string
+  clientLabel?: string | undefined
+}
+export interface AuthSession {
+  phone: string
+  memberNo: string | null
+  role: 'USER' | 'ADMIN'
+  aiEnabled: boolean
+  tokenExpiresAt: string | null
+}
+export interface RuntimeConfig {
+  serverUrl: string
+  planetUrl: string
+  configPath: string
 }
 export interface AppConfig {
   theme: ThemePreference
   releaseChannel: ReleaseChannel
   layout: LayoutSettings
   processing: ImageProcessingSettings
-  tencentSecretId: string
-  rememberTencentSecretKey: boolean
-  tencentSecretKey: string
   grade: number
   subject: Subject
   bookDir: string
@@ -135,18 +150,22 @@ export interface AppConfig {
 export interface DesktopAPI {
   getVersion(): Promise<string>
   getPlatformInfo(): Promise<PlatformInfo>
+  getRuntimeConfig(): Promise<RuntimeConfig>
   openExternal(url: string): Promise<void>
   selectImages(): Promise<ImportedImage[]>
   processCrops(request: CropRequest): Promise<CropResultSet>
-  eraseHandwriting(request: HandwritingEraseRequest): Promise<CropResultSet>
+  eraseHandwriting(request: CropRequest): Promise<CropResultSet>
+  getCaptcha(): Promise<CaptchaInfo>
+  login(request: LoginRequest): Promise<AuthSession>
+  logout(): Promise<void>
+  getAuthSession(): Promise<AuthSession | null>
+  onAuthStateChanged(callback: (session: AuthSession | null) => void): () => void
   buildPagePreview(request: PagePreviewRequest): Promise<PagePreview>
   savePage(request: PagePreviewRequest): Promise<string | null>
   printPage(request: PagePreviewRequest): Promise<boolean>
   listBookEntries(): Promise<CollectionEntry[]>
-  addBookEntries(request: BookAddRequest): Promise<CollectionEntry[]>
-  removeBookEntry(id: string): Promise<CollectionEntry[]>
-  generateAnalogy(request: AnalogyGenerateRequest): Promise<AnalogyDocument>
-  printAnalogy(document: AnalogyDocument): Promise<boolean>
+  addBookEntries(request: BookAddRequest): Promise<number>
+  removeBookEntry(id: string): Promise<void>
   buildBookPreview(request: BookPageRequest): Promise<PagePreview>
   printBook(request: BookPageRequest): Promise<boolean>
   openLogDirectory(): Promise<void>
@@ -155,6 +174,7 @@ export interface DesktopAPI {
   setConfig(config: AppConfig): Promise<AppConfig>
   getUpdateState(): Promise<UpdateState>
   checkForUpdates(): Promise<UpdateState>
+  downloadUpdate(): Promise<UpdateState>
   installUpdate(): Promise<void>
   onUpdateStateChanged(callback: (state: UpdateState) => void): () => void
 }

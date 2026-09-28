@@ -2,8 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import {
   ArrowLeft,
-  BookMarked,
-  ExternalLink,
+  Database,
   Image,
   KeyRound,
   LayoutTemplate,
@@ -12,19 +11,23 @@ import {
   Wrench,
 } from '@lucide/vue'
 import { useRouter } from 'vue-router'
-import { useAppStore } from '@renderer/stores/app'
+import { friendlyError, useAppStore } from '@renderer/stores/app'
+import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
 import { desktopAPI } from '@renderer/services/desktop-api'
+import LoginDialog from '@renderer/components/LoginDialog.vue'
 import type { AppConfig } from '@shared/types'
 
-type Section = 'layout' | 'image' | 'tencent' | 'book' | 'appearance' | 'advanced'
+type Section = 'layout' | 'image' | 'account' | 'book' | 'appearance' | 'advanced'
 const app = useAppStore()
+const auth = useAuthStore()
 const workspace = useWorkspaceStore()
 const router = useRouter()
 const active = ref<Section>('layout')
 const search = ref('')
-const showSecret = ref(false)
 const saved = ref(false)
+const loginDialog = ref(false)
+const authError = ref('')
 const draft = reactive<AppConfig>(cloneConfig(app.config))
 watch(
   () => app.config,
@@ -39,8 +42,18 @@ const sections = [
     icon: LayoutTemplate,
   },
   { id: 'image' as const, label: '图像处理', keywords: '清晰度 锐化 增强', icon: Image },
-  { id: 'tencent' as const, label: '腾讯云', keywords: '去手写 密钥 SecretId API', icon: KeyRound },
-  { id: 'book' as const, label: '错题集', keywords: '保存位置 目录 数据库', icon: BookMarked },
+  {
+    id: 'account' as const,
+    label: '账号',
+    keywords: '登录 服务器 知识星球 授权',
+    icon: KeyRound,
+  },
+  {
+    id: 'book' as const,
+    label: '数据存储',
+    keywords: '临时数据 保存位置 目录 数据库',
+    icon: Database,
+  },
   { id: 'appearance' as const, label: '外观', keywords: '主题 深色 浅色', icon: Palette },
   { id: 'advanced' as const, label: '高级', keywords: '日志 版本 更新', icon: Wrench },
 ]
@@ -51,6 +64,7 @@ const filtered = computed(() => {
     : sections
 })
 const title = computed(() => sections.find((item) => item.id === active.value)?.label ?? '设置')
+const showSave = computed(() => active.value !== 'account' && active.value !== 'advanced')
 async function save(): Promise<void> {
   await app.saveConfig(cloneConfig(draft))
   await workspace.refreshCrops()
@@ -65,6 +79,20 @@ function cloneConfig(value: AppConfig): AppConfig {
 async function chooseBookDir(): Promise<void> {
   const dir = await desktopAPI.selectDirectory()
   if (dir) draft.bookDir = dir
+}
+async function logout(): Promise<void> {
+  authError.value = ''
+  try {
+    await auth.logout()
+  } catch (error) {
+    authError.value = friendlyError(error)
+  }
+}
+const updateMessage = ref('')
+async function checkUpdate(): Promise<void> {
+  updateMessage.value = ''
+  await app.checkForUpdates()
+  updateMessage.value = app.updateState.message
 }
 </script>
 
@@ -95,7 +123,9 @@ async function chooseBookDir(): Promise<void> {
             <h1>{{ title }}</h1>
             <p>设置保存后立即应用到错题预览和输出。</p>
           </div>
-          <button class="primary-button" @click="save">{{ saved ? '已保存' : '保存设置' }}</button>
+          <button v-if="showSave" class="primary-button" @click="save">
+            {{ saved ? '已保存' : '保存设置' }}
+          </button>
         </div>
 
         <section v-if="active === 'layout'" class="preference-section">
@@ -149,52 +179,36 @@ async function chooseBookDir(): Promise<void> {
           </div>
         </section>
 
-        <section v-else-if="active === 'tencent'" class="preference-section">
-          <h2>试卷手写擦除</h2>
+        <section v-else-if="active === 'account'" class="preference-section">
+          <h2>账号</h2>
           <div class="preference-group preference-form">
-            <label
-              ><span>SecretId</span
-              ><input v-model.trim="draft.tencentSecretId" placeholder="腾讯云 API 密钥 ID"
-            /></label>
-            <label
-              ><span>SecretKey</span
-              ><input
-                v-model="draft.tencentSecretKey"
-                :type="showSecret ? 'text' : 'password'"
-                placeholder="与 SecretId 配对的密钥"
-            /></label>
-            <label class="inline-check"
-              ><input v-model="showSecret" type="checkbox" />显示密钥</label
-            >
-            <label class="preference-row"
-              ><span
-                ><strong>记住 SecretKey</strong><small>使用操作系统安全存储加密保存。</small></span
-              ><input v-model="draft.rememberTencentSecretKey" class="switch-input" type="checkbox"
-            /></label>
-            <button
-              class="doc-link"
-              @click="
-                desktopAPI.openExternal('https://cloud.tencent.com/document/product/866/133907')
-              "
-            >
-              <ExternalLink :size="16" />查看腾讯云官方文档
-            </button>
+            <div v-if="auth.session" class="account-state">
+              <p>账号：{{ auth.session.phone }}</p>
+              <p>会员号：{{ auth.session.memberNo || '未绑定' }}</p>
+              <p>
+                有效期至：{{ auth.session.tokenExpiresAt || '静默续期中（30 天内使用自动续期）' }}
+              </p>
+              <button class="secondary-button" type="button" @click="logout">退出登录</button>
+            </div>
+            <div v-else class="account-state">
+              <p>
+                登录后权益：会员期内免费使用 AI
+                去手写与组卷打印、免费升级新版本与排版模板、免费一对一技术咨询。
+              </p>
+              <button class="primary-button" type="button" @click="loginDialog = true">登录</button>
+            </div>
+            <p v-if="authError" class="login-error">{{ authError }}</p>
           </div>
         </section>
 
         <section v-else-if="active === 'book'" class="preference-section">
-          <h2>错题集存储</h2>
+          <h2>数据存储</h2>
           <div class="preference-group preference-form">
             <label
-              ><span>保存位置</span
+              ><span>临时数据存储目录</span
               ><input v-model.trim="draft.bookDir" placeholder="默认：~/.cuotiku"
             /></label>
             <button class="secondary-button" type="button" @click="chooseBookDir">选择目录…</button>
-            <p class="preference-hint">
-              错题图片与 SQLite 数据库（cuotiku.db）保存在该目录；未指定时使用 home
-              目录下的隐藏文件夹 .cuotiku，旧的 index.json
-              数据首次运行自动迁移，修改位置后仅影响新加入的错题。
-            </p>
           </div>
         </section>
 
@@ -222,23 +236,25 @@ async function chooseBookDir(): Promise<void> {
         </section>
 
         <section v-else class="preference-section">
-          <h2>诊断</h2>
+          <h2>高级</h2>
           <div class="preference-group">
             <div class="preference-row">
-              <span><strong>应用日志</strong><small>打开日志目录以便排查问题。</small></span
-              ><button @click="desktopAPI.openLogDirectory">打开日志目录</button>
+              <span
+                ><strong>当前版本</strong><small>v{{ app.version }}</small></span
+              >
+              <button
+                type="button"
+                :disabled="app.updateState.status === 'checking'"
+                @click="checkUpdate"
+              >
+                {{ app.updateState.status === 'checking' ? '检查中…' : '发现新版本' }}
+              </button>
             </div>
-            <dl class="runtime-details">
-              <dt>版本</dt>
-              <dd>{{ app.version }}</dd>
-              <dt>平台</dt>
-              <dd>{{ app.platformInfo?.name }} {{ app.platformInfo?.arch }}</dd>
-              <dt>Electron</dt>
-              <dd>{{ app.platformInfo?.versions.electron }}</dd>
-            </dl>
+            <p v-if="updateMessage" class="preference-hint">{{ updateMessage }}</p>
           </div>
         </section>
       </div>
     </main>
+    <LoginDialog :open="loginDialog" @close="loginDialog = false" @success="loginDialog = false" />
   </div>
 </template>

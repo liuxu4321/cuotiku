@@ -136,13 +136,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     async addToBook(errorTypes: ErrorType[]): Promise<number> {
       if (!this.result) return 0
       const app = useAppStore()
-      const entries = await desktopAPI.addBookEntries({
+      return desktopAPI.addBookEntries({
         resultSetId: this.result.resultSetId,
         grade: app.config.grade,
         subject: app.config.subject,
         items: errorTypes.map((errorType) => ({ errorType })),
       })
-      return entries.length
     },
     async erase() {
       const app = useAppStore()
@@ -155,8 +154,6 @@ export const useWorkspaceStore = defineStore('workspace', {
           revision,
           images: plainEditSpecs(this.images),
           processing: { ...app.config.processing },
-          secretId: app.config.tencentSecretId,
-          secretKey: app.config.tencentSecretKey,
         })
         if (revision !== this.revision) return
         this.result = result

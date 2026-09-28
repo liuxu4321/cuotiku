@@ -21,12 +21,16 @@ import {
 } from '@lucide/vue'
 import PageHeader from '@renderer/components/PageHeader.vue'
 import AppDialog from '@renderer/components/AppDialog.vue'
+import LoginDialog from '@renderer/components/LoginDialog.vue'
+import PlanetDialog from '@renderer/components/PlanetDialog.vue'
 import ImageCanvas from '@renderer/components/editor/ImageCanvas.vue'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
+import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
 import type { ErrorType, Subject } from '@shared/types'
 
 const app = useAppStore()
+const auth = useAuthStore()
 const store = useWorkspaceStore()
 const mode = ref<'select' | 'pan'>('select')
 const canvas = ref<InstanceType<typeof ImageCanvas> | null>(null)
@@ -40,6 +44,56 @@ const subject = computed(() => app.config.subject)
 const bookDialog = ref(false)
 const bookTypes = ref<ErrorType[]>([])
 const bookAdded = ref(false)
+const loginDialog = ref(false)
+const planetDialog = ref(false)
+const pendingAction = ref<null | 'book' | 'save' | 'print'>(null)
+
+function eraseGate(): void {
+  if (!auth.loggedIn) {
+    loginDialog.value = true
+    return
+  }
+  void store.erase()
+}
+function runAction(action: 'book' | 'save' | 'print'): void {
+  if (action === 'book') openBookDialog()
+  else if (action === 'save') void store.save()
+  else void store.print()
+}
+function gate(action: 'book' | 'save' | 'print'): void {
+  if (auth.loggedIn) {
+    runAction(action)
+    return
+  }
+  if (action === 'book') {
+    pendingAction.value = action
+    loginDialog.value = true
+    return
+  }
+  pendingAction.value = action
+  planetDialog.value = true
+}
+function addToBookGate(): void {
+  gate('book')
+}
+function saveGate(): void {
+  gate('save')
+}
+function printGate(): void {
+  gate('print')
+}
+function onPlanetClose(): void {
+  planetDialog.value = false
+  const action = pendingAction.value
+  pendingAction.value = null
+  if (action === 'save' || action === 'print') runAction(action)
+}
+function onLoginSuccess(): void {
+  loginDialog.value = false
+  const action = pendingAction.value
+  pendingAction.value = null
+  if (action === 'book') openBookDialog()
+}
 
 watch(
   () => store.revision,
@@ -218,8 +272,14 @@ async function confirmAddToBook(): Promise<void> {
         <button
           class="solid-action"
           type="button"
-          :disabled="!store.questionCount || store.busy || store.isErased"
-          @click="store.erase"
+          :disabled="
+            !store.questionCount ||
+            store.busy ||
+            store.isErased ||
+            (auth.loggedIn && !auth.aiEnabled)
+          "
+          :title="auth.loggedIn && !auth.aiEnabled ? '当前账号未开通 AI 权限' : undefined"
+          @click="eraseGate"
         >
           <Eraser :size="17" />{{ eraseLabel }}
         </button>
@@ -227,7 +287,7 @@ async function confirmAddToBook(): Promise<void> {
           class="solid-action"
           type="button"
           :disabled="!store.result || store.busy || store.outputBusy !== null"
-          @click="openBookDialog"
+          @click="addToBookGate"
         >
           <BookMarked :size="17" />{{ bookAdded ? '已加入' : '加入错题集' }}
         </button>
@@ -235,7 +295,7 @@ async function confirmAddToBook(): Promise<void> {
           class="solid-action"
           type="button"
           :disabled="!store.result || store.busy || store.outputBusy !== null"
-          @click="store.save"
+          @click="saveGate"
         >
           <Save :size="17" />{{ store.outputBusy === 'save' ? '正在保存…' : '保存图片' }}
         </button>
@@ -243,7 +303,7 @@ async function confirmAddToBook(): Promise<void> {
           class="solid-action"
           type="button"
           :disabled="!store.result || store.busy || store.outputBusy !== null"
-          @click="store.print"
+          @click="printGate"
         >
           <Printer :size="17" />{{ store.outputBusy === 'print' ? '正在打印…' : '打印' }}
         </button>
@@ -327,6 +387,8 @@ async function confirmAddToBook(): Promise<void> {
         </div>
       </aside>
     </div>
+    <LoginDialog :open="loginDialog" @close="loginDialog = false" @success="onLoginSuccess" />
+    <PlanetDialog :open="planetDialog" @close="onPlanetClose" />
     <AppDialog
       :open="bookDialog"
       title="加入错题集"

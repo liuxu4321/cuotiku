@@ -1,15 +1,12 @@
 import { defineStore } from 'pinia'
 import { desktopAPI } from '@renderer/services/desktop-api'
-import type { AppConfig, PlatformInfo, UpdateState } from '@shared/types'
+import type { AppConfig, PlatformInfo, RuntimeConfig, UpdateState } from '@shared/types'
 
 const defaultConfig: AppConfig = {
   theme: 'system',
   releaseChannel: 'stable',
   layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
   processing: { enhance: true, enhanceStrength: 55 },
-  tencentSecretId: '',
-  rememberTencentSecretKey: false,
-  tencentSecretKey: '',
   grade: 1,
   subject: '语文',
   bookDir: '',
@@ -19,6 +16,7 @@ export const useAppStore = defineStore('app', {
     version: '',
     platformInfo: null as PlatformInfo | null,
     config: structuredClone(defaultConfig),
+    runtimeConfig: null as RuntimeConfig | null,
     updateState: { status: 'idle', channel: 'stable', message: '可以检查更新。' } as UpdateState,
     loading: false,
     error: null as string | null,
@@ -27,16 +25,18 @@ export const useAppStore = defineStore('app', {
     async initialize() {
       this.loading = true
       try {
-        const [version, platformInfo, config, updateState] = await Promise.all([
+        const [version, platformInfo, config, updateState, runtimeConfig] = await Promise.all([
           desktopAPI.getVersion(),
           desktopAPI.getPlatformInfo(),
           desktopAPI.getConfig(),
           desktopAPI.getUpdateState(),
+          desktopAPI.getRuntimeConfig(),
         ])
         this.version = version
         this.platformInfo = platformInfo
         this.config = config
         this.updateState = updateState
+        this.runtimeConfig = runtimeConfig
         this.applyTheme(config.theme)
         desktopAPI.onUpdateStateChanged((state) => {
           this.updateState = state
@@ -54,6 +54,9 @@ export const useAppStore = defineStore('app', {
     },
     async checkForUpdates() {
       this.updateState = await desktopAPI.checkForUpdates()
+    },
+    async downloadUpdate() {
+      this.updateState = await desktopAPI.downloadUpdate()
     },
     async installUpdate() {
       await desktopAPI.installUpdate()

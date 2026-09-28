@@ -8,6 +8,9 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: yycuotiku.config.json
+    to: yycuotiku.config.json
 extraMetadata:
   main: out/main/index.js
 publish:

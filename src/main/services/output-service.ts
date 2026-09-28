@@ -5,7 +5,6 @@ import { pathToFileURL } from 'node:url'
 import { BrowserWindow, dialog, type WebContents } from 'electron'
 import sharp, { type OverlayOptions } from 'sharp'
 import type { ErrorType, LayoutSettings, PagePreview, PaperSize } from '@shared/types'
-import { getEntryBuffers } from './collection-service'
 import { getResultSet, toDataUrl } from './image-service'
 
 const PX_PER_MM = 300 / 25.4
@@ -122,26 +121,14 @@ export async function buildPage(
   return composePages(crops, layout)
 }
 
-export async function buildBookPages(
-  entryIds: string[],
-  layout: LayoutSettings,
-): Promise<{ buffers: Buffer[]; preview: PagePreview }> {
-  const crops = await getEntryBuffers(entryIds)
-  if (!crops.length) throw new Error('请先在错题集中勾选要组卷的错题。')
-  const noted = await Promise.all(
-    crops.map((crop) => applyBookNote(crop, BOOK_NOTES[crop.errorType])),
-  )
-  return composePages(noted, layout)
-}
-
-const BOOK_NOTES: Record<ErrorType, string> = {
+export const BOOK_NOTES: Record<ErrorType, string> = {
   马虎: '上次马虎做错，这次要仔细哦！',
   不会: '上次是不会，这次一定要做对哦！',
   概念不清: '上次概念没理清，这次先想清楚再下笔哦！',
   其他: '上次这道题没做好，这次认真再战哦！',
 }
 
-async function applyBookNote(crop: LayoutCrop, note?: string): Promise<LayoutCrop> {
+export async function applyBookNote(crop: LayoutCrop, note?: string): Promise<LayoutCrop> {
   if (!note) return crop
   const fontSize = Math.max(24, Math.min(72, Math.round(crop.width * 0.035)))
   const pad = Math.round(fontSize * 0.5)

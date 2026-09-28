@@ -27,8 +27,8 @@ export const useBookStore = defineStore('book', {
     async remove(id: string) {
       this.error = null
       try {
-        this.entries = await desktopAPI.removeBookEntry(id)
-        this.preview = null
+        await desktopAPI.removeBookEntry(id)
+        this.entries = this.entries.filter((entry) => entry.id !== id)
       } catch (error) {
         this.error = friendlyError(error)
       }
@@ -49,16 +49,18 @@ export const useBookStore = defineStore('book', {
         this.previewBusy = false
       }
     },
-    async printBook(entryIds: string[], paper: PaperSize) {
+    async printBook(entryIds: string[], paper: PaperSize): Promise<boolean> {
       const ids = entryIds.slice()
-      if (!ids.length || this.printing) return
+      if (!ids.length || this.printing) return false
       this.printing = true
       this.error = null
       try {
         const success = await desktopAPI.printBook({ entryIds: ids, paper })
         if (!success) this.error = '打印未完成，请在打印对话框中重试。'
+        return success
       } catch (error) {
         this.error = friendlyError(error)
+        return false
       } finally {
         this.printing = false
       }

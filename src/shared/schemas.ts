@@ -32,9 +32,12 @@ export const cropRequestSchema = z.object({
   images: z.array(imageEditSpecSchema),
   processing: processingSettingsSchema,
 })
-export const handwritingEraseRequestSchema = cropRequestSchema.extend({
-  secretId: z.string(),
-  secretKey: z.string(),
+export const loginRequestSchema = z.object({
+  phone: z.string().regex(/^1\d{10}$/, '请输入 11 位手机号'),
+  password: z.string().min(6).max(64),
+  captchaId: z.string().min(1),
+  captchaCode: z.string().min(1),
+  clientLabel: z.string().max(64).optional(),
 })
 export const subjectSchema = z.enum(['语文', '数学', '英语'])
 export const errorTypeSchema = z.enum(['马虎', '不会', '概念不清', '其他'])
@@ -52,31 +55,13 @@ export const collectionEntrySchema = z.object({
   createdAt: z.number(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
+  practiceCount: z.number().int().nonnegative(),
   thumbDataUrl: z.string(),
 })
 export const bookEntryIdSchema = z.string().min(1)
 export const bookPageRequestSchema = z.object({
   entryIds: z.array(z.string().min(1)).min(1),
   paper: paperSizeSchema,
-})
-export const analogyGenerateRequestSchema = z.object({
-  entryIds: z.array(z.string().min(1)).min(1),
-})
-export const analogyDocumentSchema = z.object({
-  title: z.string().min(1),
-  createdAt: z.number(),
-  items: z
-    .array(
-      z.object({
-        entryId: z.string().min(1),
-        thumbDataUrl: z.string(),
-        subject: subjectSchema,
-        grade: z.number().int().min(1).max(9),
-        errorType: errorTypeSchema,
-        questions: z.array(z.string().min(1)).min(1),
-      }),
-    )
-    .min(1),
 })
 export const pagePreviewRequestSchema = z.object({
   resultSetId: z.string().min(1),
@@ -87,9 +72,6 @@ export const appConfigSchema = z.object({
   releaseChannel: releaseChannelSchema.default('stable'),
   layout: layoutSettingsSchema.default({ paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 }),
   processing: processingSettingsSchema.default({ enhance: true, enhanceStrength: 55 }),
-  tencentSecretId: z.string().default(''),
-  rememberTencentSecretKey: z.boolean().default(false),
-  tencentSecretKey: z.string().default(''),
   grade: z.number().int().min(1).max(9).default(1),
   subject: subjectSchema.default('语文'),
   bookDir: z.string().default(''),
