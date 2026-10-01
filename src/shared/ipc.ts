@@ -1,4 +1,6 @@
 import type {
+  AbilityRequest,
+  AbilityResponse,
   AppConfig,
   AuthSession,
   BookAddRequest,
@@ -9,12 +11,15 @@ import type {
   CollectionEntry,
   CropRequest,
   CropResultSet,
+  EnhanceResult,
   ImportedImage,
   LoginRequest,
   PagePreview,
   PagePreviewRequest,
   PlatformInfo,
+  PrinterInfo,
   RuntimeConfig,
+  SvgPagesRequest,
   UpdateState,
 } from './types'
 
@@ -25,8 +30,10 @@ export const ipcChannels = {
   appNavigate: 'app:navigate',
   appOpenExternal: 'app:open-external',
   imagesSelect: 'images:select',
+  imagesEnhance: 'images:enhance',
+  imagesErase: 'images:erase',
+  imagesRegisterScanner: 'images:register-scanner',
   imagesProcessCrops: 'images:process-crops',
-  imagesEraseHandwriting: 'images:erase-handwriting',
   authCaptcha: 'auth:captcha',
   authLogin: 'auth:login',
   authLogout: 'auth:logout',
@@ -35,6 +42,8 @@ export const ipcChannels = {
   pageBuildPreview: 'page:build-preview',
   pageSave: 'page:save',
   pagePrint: 'page:print',
+  printSvgPages: 'print:svg-pages',
+  saveSvgPages: 'print:save-svg-pages',
   bookAdd: 'book:add',
   bookList: 'book:list',
   bookRemove: 'book:remove',
@@ -44,6 +53,8 @@ export const ipcChannels = {
   bookRandom: 'book:random',
   appOpenLogDirectory: 'app:open-log-directory',
   dialogSelectDirectory: 'dialog:select-directory',
+  printersList: 'printers:list',
+  userAbility: 'user:ability',
   configGet: 'config:get',
   configSet: 'config:set',
   updaterGetState: 'updater:get-state',
@@ -59,11 +70,10 @@ export interface IpcInvokeMap {
   [ipcChannels.appGetRuntimeConfig]: { args: []; result: RuntimeConfig }
   [ipcChannels.appOpenExternal]: { args: [url: string]; result: void }
   [ipcChannels.imagesSelect]: { args: []; result: ImportedImage[] }
+  [ipcChannels.imagesEnhance]: { args: [id: string]; result: EnhanceResult }
+  [ipcChannels.imagesErase]: { args: [id: string]; result: EnhanceResult }
+  [ipcChannels.imagesRegisterScanner]: { args: [dataUrl: string]; result: ImportedImage }
   [ipcChannels.imagesProcessCrops]: { args: [request: CropRequest]; result: CropResultSet }
-  [ipcChannels.imagesEraseHandwriting]: {
-    args: [request: CropRequest]
-    result: CropResultSet
-  }
   [ipcChannels.authCaptcha]: { args: []; result: CaptchaInfo }
   [ipcChannels.authLogin]: { args: [request: LoginRequest]; result: AuthSession }
   [ipcChannels.authLogout]: { args: []; result: void }
@@ -71,6 +81,8 @@ export interface IpcInvokeMap {
   [ipcChannels.pageBuildPreview]: { args: [request: PagePreviewRequest]; result: PagePreview }
   [ipcChannels.pageSave]: { args: [request: PagePreviewRequest]; result: string | null }
   [ipcChannels.pagePrint]: { args: [request: PagePreviewRequest]; result: boolean }
+  [ipcChannels.printSvgPages]: { args: [request: SvgPagesRequest]; result: boolean }
+  [ipcChannels.saveSvgPages]: { args: [request: SvgPagesRequest]; result: string | null }
   [ipcChannels.bookAdd]: { args: [request: BookAddRequest]; result: number }
   [ipcChannels.bookList]: { args: []; result: CollectionEntry[] }
   [ipcChannels.bookRemove]: { args: [id: string]; result: void }
@@ -80,6 +92,8 @@ export interface IpcInvokeMap {
   [ipcChannels.bookRandom]: { args: [request: BookRandomRequest]; result: BookRandomResult }
   [ipcChannels.appOpenLogDirectory]: { args: []; result: void }
   [ipcChannels.dialogSelectDirectory]: { args: []; result: string | null }
+  [ipcChannels.printersList]: { args: []; result: PrinterInfo[] }
+  [ipcChannels.userAbility]: { args: [request: AbilityRequest]; result: AbilityResponse }
   [ipcChannels.configGet]: { args: []; result: AppConfig }
   [ipcChannels.configSet]: { args: [config: AppConfig]; result: AppConfig }
   [ipcChannels.updaterGetState]: { args: []; result: UpdateState }

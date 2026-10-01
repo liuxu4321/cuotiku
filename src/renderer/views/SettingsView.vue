@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowLeft, Database, Image, KeyRound, LayoutTemplate, Palette, Search } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
@@ -7,7 +7,9 @@ import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
 import { desktopAPI } from '@renderer/services/desktop-api'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
-import type { AppConfig } from '@shared/types'
+import { svgToDataUrl, templates, type TemplateDefinition } from '@renderer/templates'
+import { THERMAL_SIZES } from '@shared/types'
+import type { AppConfig, PrinterInfo } from '@shared/types'
 
 type Section = 'layout' | 'image' | 'account' | 'book' | 'appearance'
 const app = useAppStore()
@@ -19,6 +21,7 @@ const search = ref('')
 const saved = ref(false)
 const loginDialog = ref(false)
 const authError = ref('')
+const printers = ref<PrinterInfo[]>([])
 const draft = reactive<AppConfig>(cloneConfig(app.config))
 watch(
   () => app.config,
@@ -70,6 +73,19 @@ async function chooseBookDir(): Promise<void> {
   const dir = await desktopAPI.selectDirectory()
   if (dir) draft.bookDir = dir
 }
+async function loadPrinters(): Promise<void> {
+  try {
+    printers.value = await desktopAPI.listPrinters()
+  } catch {
+    printers.value = []
+  }
+}
+function templatePreview(tpl: TemplateDefinition): string {
+  return svgToDataUrl(tpl.buildPages([])[0] ?? '')
+}
+onMounted(() => {
+  void loadPrinters()
+})
 async function logout(): Promise<void> {
   authError.value = ''
   try {
@@ -124,6 +140,47 @@ async function logout(): Promise<void> {
               </select></label
             >
             <label class="preference-row"
+              ><span
+                ><strong>打印方式</strong
+                ><small>普通纸按排版列数打印；热敏纸每题一页。</small></span
+              ><select v-model="draft.layout.printMode">
+                <option value="normal">普通纸</option>
+                <option value="thermal">热敏纸</option>
+                <option value="template">模板打印</option>
+              </select></label
+            >
+            <label v-if="draft.layout.printMode === 'normal'" class="preference-row"
+              ><span><strong>纸张大小</strong><small>普通纸排版纸张。</small></span
+              ><select v-model="draft.layout.paper">
+                <option value="A4">A4</option>
+                <option value="B5">B5</option>
+              </select></label
+            >
+            <label v-else-if="draft.layout.printMode === 'thermal'" class="preference-row"
+              ><span><strong>热敏纸尺寸</strong><small>常用热敏纸规格，每题打印一页。</small></span
+              ><select v-model="draft.layout.thermalSize">
+                <option v-for="size in THERMAL_SIZES" :key="size.id" :value="size.id">
+                  {{ size.label }}
+                </option>
+              </select></label
+            >
+            <template v-if="draft.layout.printMode === 'thermal'">
+              <label class="preference-row"
+                ><span
+                  ><strong>热敏打印机</strong
+                  ><small>留空则按打印机名称自动识别热敏打印机。</small></span
+                ><select v-model="draft.thermalPrinter">
+                  <option value="">自动识别</option>
+                  <option v-for="item in printers" :key="item.name" :value="item.name">
+                    {{ item.displayName || item.name }}{{ item.isDefault ? '（默认）' : '' }}
+                  </option>
+                </select></label
+              >
+              <button class="secondary-button" type="button" @click="loadPrinters">
+                刷新打印机列表
+              </button>
+            </template>
+            <label class="preference-row"
               ><span><strong>题目间距</strong><small>相邻错题之间的留白。</small></span>
               <div class="number-field">
                 <input v-model.number="draft.layout.gapMm" type="number" min="2" max="20" /><span
@@ -139,6 +196,20 @@ async function logout(): Promise<void> {
                 >
               </div></label
             >
+            <div v-if="draft.layout.printMode === 'template'" class="template-picker">
+              <button
+                v-for="tpl in templates"
+                :key="tpl.id"
+                type="button"
+                class="template-card"
+                :class="{ active: draft.templateId === tpl.id }"
+                @click="draft.templateId = tpl.id"
+              >
+                <img :src="templatePreview(tpl)" alt="" />
+                <strong>{{ tpl.name }}</strong>
+                <small>{{ tpl.description }}</small>
+              </button>
+            </div>
           </div>
         </section>
 

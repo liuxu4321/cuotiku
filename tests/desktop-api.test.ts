@@ -24,17 +24,28 @@ function createFallbackAPI(): DesktopAPI {
     onNavigate: vi.fn(() => () => undefined),
     async openExternal() {},
     selectImages: vi.fn(async () => []),
+    registerScannerImage: vi.fn(async () => ({
+      id: 'scanner',
+      name: 'scanner.jpg',
+      width: 1,
+      height: 1,
+      previewDataUrl: '',
+    })),
+    enhanceImage: vi.fn(async (id: string) => ({
+      image: { id, name: 'a.png', width: 1, height: 1, previewDataUrl: '' },
+      enhanced: false,
+      message: null,
+    })),
     processCrops: vi.fn(async () => ({
       resultSetId: 'result',
       revision: 1,
       crops: [],
       erased: false,
     })),
-    eraseHandwriting: vi.fn(async () => ({
-      resultSetId: 'erased',
-      revision: 1,
-      crops: [],
-      erased: true,
+    eraseImage: vi.fn(async (id: string) => ({
+      image: { id, name: 'a.png', width: 1, height: 1, previewDataUrl: '' },
+      enhanced: true,
+      message: null,
     })),
     getCaptcha: vi.fn(async () => ({ captchaId: 'c', imageBase64: '', expiresInSeconds: 300 })),
     login: vi.fn(async () => ({
@@ -55,22 +66,40 @@ function createFallbackAPI(): DesktopAPI {
     removeBookEntry: vi.fn(async () => undefined),
     buildBookPreview: vi.fn(async () => ({ pages: [], columns: 1, scalePercent: 100 })),
     printBook: vi.fn(async () => true),
+    printSvgPages: vi.fn(async () => true),
+    saveSvgPages: vi.fn(async () => null),
     bumpBookPractice: vi.fn(async () => undefined),
     randomBookEntries: vi.fn(async () => ({ items: [], requested: 0, selected: 0, byType: {} })),
     async openLogDirectory() {},
     async selectDirectory() {
       return null
     },
+    async listPrinters() {
+      return []
+    },
+    getAbility: vi.fn(async () => ({
+      overall: { subject: null, sampleSize: 0, overall: null, dimensions: [] },
+      subjects: [],
+    })),
     async getConfig() {
       return {
         theme: 'system',
         releaseChannel: 'stable',
-        layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
+        layout: {
+          paper: 'A4',
+          mode: 'auto',
+          gapMm: 8,
+          marginMm: 10,
+          printMode: 'normal',
+          thermalSize: '80x60',
+        },
         processing: { enhance: true, enhanceStrength: 55 },
         grade: 1,
         term: 1,
         subject: '语文',
         bookDir: '',
+        thermalPrinter: '',
+        templateId: 'cuotiben-2up',
       }
     },
     async setConfig(config) {

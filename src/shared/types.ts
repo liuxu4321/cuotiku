@@ -25,6 +25,11 @@ export interface ImportedImage {
   previewDataUrl: string
 }
 
+export interface EnhanceResult {
+  image: ImportedImage
+  enhanced: boolean
+  message: string | null
+}
 export interface SelectionRegion {
   id: string
   imageId: string
@@ -67,6 +72,8 @@ export interface LayoutSettings {
   mode: LayoutMode
   gapMm: number
   marginMm: number
+  printMode: PrintMode
+  thermalSize: ThermalSizeId
 }
 export interface PagePreviewRequest {
   resultSetId: string
@@ -131,9 +138,57 @@ export interface BookRandomResult {
   selected: number
   byType: Record<string, BookRandomTypeStat>
 }
+export type PrintMode = 'normal' | 'thermal' | 'template'
+export const THERMAL_SIZES = [
+  { id: '57x30', label: '57×30mm', widthMm: 57, heightMm: 30 },
+  { id: '57x50', label: '57×50mm', widthMm: 57, heightMm: 50 },
+  { id: '80x40', label: '80×40mm', widthMm: 80, heightMm: 40 },
+  { id: '80x50', label: '80×50mm', widthMm: 80, heightMm: 50 },
+  { id: '80x60', label: '80×60mm', widthMm: 80, heightMm: 60 },
+  { id: '80x80', label: '80×80mm', widthMm: 80, heightMm: 80 },
+  { id: '80x100', label: '80×100mm', widthMm: 80, heightMm: 100 },
+  { id: '80x120', label: '80×120mm', widthMm: 80, heightMm: 120 },
+] as const
+export type ThermalSizeId = (typeof THERMAL_SIZES)[number]['id']
 export interface BookPageRequest {
   entryIds: string[]
   paper: PaperSize
+  mode: PrintMode
+  thermalSize: ThermalSizeId
+}
+export interface AbilityDimension {
+  key: string
+  label: string
+  score: number | null
+  totalCount: number
+  practiceCount: number
+  weightedCount: number
+}
+export interface AbilityModel {
+  subject: string | null
+  sampleSize: number
+  overall: number | null
+  dimensions: AbilityDimension[]
+}
+export interface AbilityRequest {
+  grade?: number | undefined
+  term?: number | undefined
+  subject?: Subject | undefined
+  start?: string | undefined
+  end?: string | undefined
+}
+export interface AbilityResponse {
+  overall: AbilityModel
+  subjects: AbilityModel[]
+}
+export interface SvgPagesRequest {
+  svgs: string[]
+  paper: PaperSize
+}
+export interface PrinterInfo {
+  name: string
+  displayName: string
+  isDefault: boolean
 }
 export interface CaptchaInfo {
   captchaId: string
@@ -168,6 +223,8 @@ export interface AppConfig {
   term: Term
   subject: Subject
   bookDir: string
+  thermalPrinter: string
+  templateId: string
 }
 
 export interface DesktopAPI {
@@ -177,8 +234,10 @@ export interface DesktopAPI {
   onNavigate(callback: (route: AppRoute) => void): () => void
   openExternal(url: string): Promise<void>
   selectImages(): Promise<ImportedImage[]>
+  registerScannerImage(dataUrl: string): Promise<ImportedImage>
+  enhanceImage(id: string): Promise<EnhanceResult>
   processCrops(request: CropRequest): Promise<CropResultSet>
-  eraseHandwriting(request: CropRequest): Promise<CropResultSet>
+  eraseImage(id: string): Promise<EnhanceResult>
   getCaptcha(): Promise<CaptchaInfo>
   login(request: LoginRequest): Promise<AuthSession>
   logout(): Promise<void>
@@ -192,10 +251,14 @@ export interface DesktopAPI {
   removeBookEntry(id: string): Promise<void>
   buildBookPreview(request: BookPageRequest): Promise<PagePreview>
   printBook(request: BookPageRequest): Promise<boolean>
+  printSvgPages(request: SvgPagesRequest): Promise<boolean>
+  saveSvgPages(request: SvgPagesRequest): Promise<string | null>
   bumpBookPractice(ids: string[]): Promise<void>
   randomBookEntries(request: BookRandomRequest): Promise<BookRandomResult>
   openLogDirectory(): Promise<void>
   selectDirectory(): Promise<string | null>
+  listPrinters(): Promise<PrinterInfo[]>
+  getAbility(request: AbilityRequest): Promise<AbilityResponse>
   getConfig(): Promise<AppConfig>
   setConfig(config: AppConfig): Promise<AppConfig>
   getUpdateState(): Promise<UpdateState>

@@ -19,7 +19,7 @@ export function createMainWindow(): BrowserWindow {
     minWidth: 900,
     minHeight: 620,
     show: false,
-    title: '盈盈错题库',
+    title: '拾星错题本',
     backgroundColor: '#101418',
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),

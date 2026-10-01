@@ -26,6 +26,20 @@
 .sidebar {
   padding: 14px 10px;
 }
+.app-shell .sidebar {
+  background: #192126;
+  isolation: isolate;
+  position: relative;
+}
+.app-shell .sidebar::after {
+  background: url('../assets/sidebar-bg.png') bottom / cover no-repeat;
+  content: '';
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
 .sidebar-main {
   padding: 14px 0;
 }
@@ -104,19 +118,16 @@
   background: #202b31;
   border: 1px solid #2e3b41;
   border-radius: 8px;
-  bottom: 16px;
+  bottom: 60px;
   box-shadow: 0 12px 32px rgb(0 0 0 / 40%);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  left: 204px;
+  left: 12px;
   padding: 12px;
   position: fixed;
   width: 232px;
-  z-index: 30;
-}
-.sidebar-collapsed .auth-popover {
-  left: 76px;
+  z-index: 60;
 }
 .auth-popover strong {
   color: #fff;
@@ -193,6 +204,25 @@
 }
 .editor-toolbar .segmented {
   display: flex;
+  gap: 4px;
+}
+.editor-toolbar [data-tip] {
+  position: relative;
+}
+.editor-toolbar [data-tip]:hover::after {
+  background: #1d252c;
+  border-radius: 6px;
+  bottom: calc(100% + 6px);
+  color: #fff;
+  content: attr(data-tip);
+  font-size: 12px;
+  left: 50%;
+  padding: 4px 8px;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 50;
 }
 .toolbar-divider {
   background: color-mix(in srgb, CanvasText 14%, transparent);
@@ -269,18 +299,6 @@
   font-size: 12px;
   padding: 2px 7px;
 }
-.empty-import {
-  align-items: center;
-  background: transparent;
-  border: 1px dashed color-mix(in srgb, CanvasText 25%, transparent);
-  color: color-mix(in srgb, CanvasText 60%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  height: 110px;
-  justify-content: center;
-  width: 100%;
-}
 .source-item {
   align-items: center;
   background: transparent;
@@ -356,6 +374,17 @@
 }
 .paper-heading {
   padding: 10px 10px 0;
+}
+.paper-head-actions {
+  display: flex;
+  gap: 6px;
+}
+.paper-head-meta {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .page-preview {
   flex: 1;
@@ -1394,6 +1423,238 @@ nav {
 .spinning {
   animation: about-spin 900ms linear infinite;
 }
+.app-loading-mask {
+  align-items: center;
+  background: rgb(0 0 0 / 45%);
+  backdrop-filter: blur(2px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 100;
+}
+.app-loading-card {
+  align-items: center;
+  background: Canvas;
+  border-radius: 10px;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 30%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 32px;
+}
+.app-loading-card small {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 12px;
+}
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.home-filters {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.home-filters button {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+}
+.ability-layout {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+}
+.ability-card {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.ability-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ability-tabs button {
+  background: color-mix(in srgb, CanvasText 8%, transparent);
+  border-radius: 14px;
+  color: CanvasText;
+  min-height: 28px;
+  padding: 0 12px;
+}
+.ability-tabs button.active {
+  background: #1769e0;
+  color: #fff;
+}
+.ability-overall {
+  color: color-mix(in srgb, CanvasText 60%, transparent);
+  font-size: 12px;
+  margin-bottom: 0;
+}
+.ability-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+.ability-row {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px 14px;
+  padding: 8px 12px;
+}
+.ability-row strong {
+  font-size: 13px;
+  min-width: 84px;
+}
+.ability-row span {
+  color: color-mix(in srgb, CanvasText 65%, transparent);
+}
+.ability-radar .radar-ring {
+  fill: none;
+  stroke: color-mix(in srgb, CanvasText 14%, transparent);
+}
+.ability-radar .radar-axis {
+  stroke: color-mix(in srgb, CanvasText 14%, transparent);
+}
+.ability-radar .radar-area {
+  fill: rgb(23 105 224 / 25%);
+  stroke: #1769e0;
+  stroke-width: 2;
+}
+.ability-radar .radar-dot {
+  fill: #1769e0;
+}
+.ability-radar .radar-label {
+  fill: CanvasText;
+  font-size: 12px;
+}
+.ability-radar .radar-empty {
+  fill: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 13px;
+}
+.template-picker {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+.template-card {
+  background: Canvas;
+  border: 2px solid color-mix(in srgb, CanvasText 15%, transparent);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  text-align: left;
+}
+.template-card.active {
+  border-color: #1769e0;
+}
+.template-card img {
+  background: white;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 4px;
+  width: 100%;
+}
+.template-card strong {
+  font-size: 13px;
+}
+.template-card small {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 11px;
+}
+.coming-soon-page {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.coming-soon-card {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 40px 56px;
+  text-align: center;
+}
+.coming-soon-card svg {
+  color: color-mix(in srgb, CanvasText 45%, transparent);
+}
+.coming-soon-card small {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 12px;
+}
+.scanner-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+.scanner-preview video {
+  background: #000;
+  border-radius: 8px;
+  display: block;
+  max-height: 420px;
+  width: 100%;
+}
+.scanner-preview {
+  position: relative;
+}
+.scanner-guide {
+  border: 2px dashed rgb(255 255 255 / 75%);
+  border-radius: 4px;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 25%);
+  pointer-events: none;
+  position: absolute;
+}
+.scanner-hint {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+.scanner-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.scanner-device {
+  display: grid;
+  gap: 6px;
+}
+.scanner-device span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.scanner-device select {
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-radius: 6px;
+  height: 34px;
+  padding: 0 8px;
+}
+.scanner-side .primary-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+}
+.scanner-count {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 12px;
+  margin-bottom: 0;
+}
 .update-notice {
   background: Canvas;
   border: 1px solid color-mix(in srgb, #1769e0 35%, transparent);
@@ -1535,7 +1796,7 @@ nav {
   background: white;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
-  max-width: 220px;
+  max-width: 280px;
   padding: 6px;
   width: 100%;
 }
@@ -3012,4 +3273,35 @@ progress {
 }
 .app-shell:not(.right-panel-open) .content {
   padding: 14px 18px 18px;
+}
+
+/* 柔和字体与排版 */
+:root {
+  font-family:
+    ui-rounded,
+    'SF Pro Rounded',
+    'PingFang SC',
+    'HarmonyOS Sans SC',
+    MiSans,
+    'Source Han Sans SC',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    system-ui,
+    sans-serif;
+}
+body {
+  line-height: 1.55;
+}
+h1,
+h2,
+h3,
+h4,
+strong {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+button,
+input,
+select {
+  letter-spacing: 0.01em;
 }

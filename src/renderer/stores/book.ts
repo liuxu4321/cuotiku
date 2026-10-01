@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { desktopAPI } from '@renderer/services/desktop-api'
 import { friendlyError } from './app'
-import type { CollectionEntry, PagePreview, PaperSize } from '@shared/types'
+import type { BookPageRequest, CollectionEntry, PagePreview } from '@shared/types'
 
 export const useBookStore = defineStore('book', {
   state: () => ({
@@ -33,16 +33,15 @@ export const useBookStore = defineStore('book', {
         this.error = friendlyError(error)
       }
     },
-    async refreshPreview(entryIds: string[], paper: PaperSize) {
-      const ids = entryIds.slice()
-      if (!ids.length) {
+    async refreshPreview(request: BookPageRequest) {
+      if (!request.entryIds.length) {
         this.preview = null
         return
       }
       this.previewBusy = true
       this.error = null
       try {
-        this.preview = await desktopAPI.buildBookPreview({ entryIds: ids, paper })
+        this.preview = await desktopAPI.buildBookPreview(request)
       } catch (error) {
         this.error = friendlyError(error)
       } finally {
@@ -58,13 +57,12 @@ export const useBookStore = defineStore('book', {
         this.error = friendlyError(error)
       }
     },
-    async printBook(entryIds: string[], paper: PaperSize): Promise<boolean> {
-      const ids = entryIds.slice()
-      if (!ids.length || this.printing) return false
+    async printBook(request: BookPageRequest): Promise<boolean> {
+      if (!request.entryIds.length || this.printing) return false
       this.printing = true
       this.error = null
       try {
-        const success = await desktopAPI.printBook({ entryIds: ids, paper })
+        const success = await desktopAPI.printBook(request)
         if (!success) this.error = '打印未完成，请在打印对话框中重试。'
         return success
       } catch (error) {

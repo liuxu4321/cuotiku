@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { desktopAPI } from '@renderer/services/desktop-api'
+import { svgToDataUrl, templateById } from '@renderer/templates'
 import { friendlyError, useAppStore } from './app'
 import type {
   CropResultSet,
@@ -23,10 +24,13 @@ export const useWorkspaceStore = defineStore('workspace', {
     revision: 0,
     result: null as CropResultSet | null,
     pagePreview: null as PagePreview | null,
-    busy: false,
+    templateSvgs: [] as string[],
     outputBusy: null as null | 'save' | 'print',
+    enhancing: false,
+    enhanceMessage: '',
+    erasing: false,
+    eraseMessage: '',
     error: null as string | null,
-    erasedRevision: -1,
     resultRevision: -1,
   }),
   getters: {
@@ -40,7 +44,6 @@ export const useWorkspaceStore = defineStore('workspace', {
         fineAngle,
         selections,
       })),
-    isErased: (state) => state.erasedRevision === state.revision,
     resultStale: (state) => state.result !== null && state.resultRevision !== state.revision,
   },
   actions: {
@@ -56,18 +59,45 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.error = friendlyError(error)
       }
     },
+    async addScannerImage(dataUrl: string): Promise<void> {
+      const image = await desktopAPI.registerScannerImage(dataUrl)
+      this.images.push({ ...image, quarterTurns: 0, fineAngle: 0, selections: [] })
+      this.activeImageId ||= image.id
+    },
+    async enhanceAll() {
+      if (!this.images.length || this.enhancing) return
+      this.enhancing = true
+      this.enhanceMessage = `正在优化图片 0/${this.images.length}…`
+      let warning: string | null = null
+      try {
+        for (let index = 0; index < this.images.length; index += 1) {
+          const current = this.images[index]
+          if (!current) continue
+          this.enhanceMessage = `正在优化图片 ${index + 1}/${this.images.length}…`
+          try {
+            const result = await desktopAPI.enhanceImage(current.id)
+            const position = this.images.findIndex((image) => image.id === current.id)
+            const target = position >= 0 ? this.images[position] : undefined
+            if (target) this.images[position] = { ...target, ...result.image }
+            if (!result.enhanced && result.message) warning = result.message
+          } catch {
+            warning = '图像优化失败，已保留原图。'
+          }
+        }
+        if (warning) this.error = warning
+        this.changed()
+      } finally {
+        this.enhancing = false
+        this.enhanceMessage = ''
+      }
+    },
     removeImage(id: string) {
       this.images = this.images.filter((image) => image.id !== id)
       if (this.activeImageId === id) this.activeImageId = this.images[0]?.id ?? null
       this.changed()
     },
     changed() {
-      if (this.erasedRevision === this.revision) {
-        this.result = null
-        this.pagePreview = null
-      }
       this.revision += 1
-      this.erasedRevision = -1
     },
     setSelections(regions: SelectionRegion[]) {
       if (!this.activeImage) return
@@ -124,6 +154,25 @@ export const useWorkspaceStore = defineStore('workspace', {
     async refreshPagePreview() {
       if (!this.result) return
       const app = useAppStore()
+      if (app.config.layout.printMode === 'template') {
+        const template = templateById(app.config.templateId)
+        const today = new Date().toLocaleDateString('zh-CN')
+        const items = this.result.crops.map((crop) => ({
+          imageDataUrl: crop.dataUrl,
+          width: crop.width,
+          height: crop.height,
+          dateText: today,
+          sourceText: `${app.config.subject}·${app.config.grade}年级`,
+        }))
+        this.templateSvgs = template.buildPages(items)
+        this.pagePreview = {
+          pages: this.templateSvgs.map((svg) => svgToDataUrl(svg)),
+          columns: template.cardsPerPage,
+          scalePercent: 100,
+        }
+        return
+      }
+      this.templateSvgs = []
       try {
         this.pagePreview = await desktopAPI.buildPagePreview({
           resultSetId: this.result.resultSetId,
@@ -144,27 +193,32 @@ export const useWorkspaceStore = defineStore('workspace', {
         items: errorTypes.map((errorType) => ({ errorType })),
       })
     },
-    async erase() {
-      const app = useAppStore()
-      if (!this.questionCount) return
-      this.busy = true
+    async eraseAll() {
+      if (!this.images.length || this.erasing) return
+      this.erasing = true
+      this.eraseMessage = `正在去手写 0/${this.images.length}…`
       this.error = null
-      const revision = this.revision
+      let warning: string | null = null
       try {
-        const result = await desktopAPI.eraseHandwriting({
-          revision,
-          images: plainEditSpecs(this.images),
-          processing: { ...app.config.processing },
-        })
-        if (revision !== this.revision) return
-        this.result = result
-        this.resultRevision = revision
-        this.erasedRevision = revision
-        await this.refreshPagePreview()
-      } catch (error) {
-        this.error = friendlyError(error)
+        for (let index = 0; index < this.images.length; index += 1) {
+          const current = this.images[index]
+          if (!current) continue
+          this.eraseMessage = `正在去手写 ${index + 1}/${this.images.length}…`
+          try {
+            const result = await desktopAPI.eraseImage(current.id)
+            const position = this.images.findIndex((image) => image.id === current.id)
+            const target = position >= 0 ? this.images[position] : undefined
+            if (target) this.images[position] = { ...target, ...result.image }
+            if (!result.enhanced && result.message) warning = result.message
+          } catch {
+            warning = '去手写失败，已保留原图。'
+          }
+        }
+        if (warning) this.error = warning
+        this.changed()
       } finally {
-        this.busy = false
+        this.erasing = false
+        this.eraseMessage = ''
       }
     },
     async save() {
@@ -175,6 +229,13 @@ export const useWorkspaceStore = defineStore('workspace', {
         if (!this.result || this.resultStale) await this.refreshCrops()
         if (!this.result || this.resultStale) return
         const app = useAppStore()
+        if (app.config.layout.printMode === 'template' && this.templateSvgs.length) {
+          await desktopAPI.saveSvgPages({
+            svgs: this.templateSvgs.slice(),
+            paper: templateById(app.config.templateId).paper,
+          })
+          return
+        }
         await desktopAPI.savePage({
           resultSetId: this.result.resultSetId,
           layout: { ...app.config.layout },
@@ -193,10 +254,16 @@ export const useWorkspaceStore = defineStore('workspace', {
         if (!this.result || this.resultStale) await this.refreshCrops()
         if (!this.result || this.resultStale) return
         const app = useAppStore()
-        const success = await desktopAPI.printPage({
-          resultSetId: this.result.resultSetId,
-          layout: { ...app.config.layout },
-        })
+        const success =
+          app.config.layout.printMode === 'template' && this.templateSvgs.length
+            ? await desktopAPI.printSvgPages({
+                svgs: this.templateSvgs.slice(),
+                paper: templateById(app.config.templateId).paper,
+              })
+            : await desktopAPI.printPage({
+                resultSetId: this.result.resultSetId,
+                layout: { ...app.config.layout },
+              })
         if (!success) this.error = '打印未完成，请检查打印机或在打印对话框中重试。'
       } catch (error) {
         this.error = friendlyError(error)

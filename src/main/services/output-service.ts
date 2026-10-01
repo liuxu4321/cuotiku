@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url'
 import { BrowserWindow, dialog, type WebContents } from 'electron'
 import sharp, { type OverlayOptions } from 'sharp'
 import type { ErrorType, LayoutSettings, PagePreview, PaperSize } from '@shared/types'
+import { THERMAL_SIZES } from '@shared/types'
 import { getResultSet, toDataUrl } from './image-service'
 
 const PX_PER_MM = 300 / 25.4
@@ -47,7 +48,7 @@ export async function composePages(
   const contentHeight = pageHeight - margin * 2
 
   const sizes = crops.map((crop) => {
-    const scale = Math.min(1, columnWidth / crop.width, contentHeight / crop.height)
+    const scale = Math.min(0.6, columnWidth / crop.width, contentHeight / crop.height)
     return {
       width: Math.max(1, Math.round(crop.width * scale)),
       height: Math.max(1, Math.round(crop.height * scale)),
@@ -162,13 +163,62 @@ function escapeXml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
+export async function composeThermalPages(
+  crops: LayoutCrop[],
+  size: { widthMm: number; heightMm: number },
+  marginMm = 2,
+): Promise<{ buffers: Buffer[]; preview: PagePreview }> {
+  const pageWidth = Math.round(size.widthMm * PX_PER_MM)
+  const pageHeight = Math.round(size.heightMm * PX_PER_MM)
+  const margin = Math.round(marginMm * PX_PER_MM)
+  const availWidth = pageWidth - margin * 2
+  const availHeight = pageHeight - margin * 2
+  const buffers: Buffer[] = []
+  const thumbs: string[] = []
+  let minScale = 1
+  for (const crop of crops) {
+    const scale = Math.min(1, availWidth / crop.width, availHeight / crop.height)
+    minScale = Math.min(minScale, scale)
+    const width = Math.max(1, Math.round(crop.width * scale))
+    const height = Math.max(1, Math.round(crop.height * scale))
+    const resized = await sharp(crop.buffer).resize(width, height).png().toBuffer()
+    const buffer = await sharp({
+      create: { width: pageWidth, height: pageHeight, channels: 3, background: '#ffffff' },
+    })
+      .composite([
+        {
+          input: resized,
+          left: margin,
+          top: margin,
+        },
+      ])
+      .png({ compressionLevel: 8 })
+      .withMetadata({ density: 300 })
+      .toBuffer()
+    buffers.push(buffer)
+    const thumb = await sharp(buffer)
+      .resize({ height: 1000, withoutEnlargement: true })
+      .jpeg({ quality: 84 })
+      .toBuffer()
+    thumbs.push(toDataUrl(thumb, 'image/jpeg'))
+  }
+  return {
+    buffers,
+    preview: { pages: thumbs, columns: 1, scalePercent: Math.round(minScale * 100) },
+  }
+}
+
+export function thermalSizeById(id: string): { widthMm: number; heightMm: number } {
+  return THERMAL_SIZES.find((size) => size.id === id) ?? THERMAL_SIZES[2]!
+}
+
 export async function printBuffers(
   parent: BrowserWindow | null,
   buffers: Buffer[],
-  paper: PaperSize,
+  size: { widthMm: number; heightMm: number },
+  deviceName?: string,
 ): Promise<boolean> {
-  const size = PAPER_SIZES[paper]
-  const pageSizeCss = paper === 'A4' ? 'A4' : `${size.widthMm}mm ${size.heightMm}mm`
+  const pageSizeCss = `${size.widthMm}mm ${size.heightMm}mm`
   const dir = await mkdtemp(join(tmpdir(), 'wrong-question-print-'))
   const sources: string[] = []
   for (let index = 0; index < buffers.length; index += 1) {
@@ -180,9 +230,25 @@ export async function printBuffers(
   const html =
     `<title>错题打印</title>` +
     `<style>@page{size:${pageSizeCss};margin:0}html,body{margin:0}img{width:${size.widthMm}mm;height:${size.heightMm}mm;display:block;page-break-after:always}img:last-of-type{page-break-after:auto}</style>${images}`
-  const pageSize =
-    paper === 'A4' ? ('A4' as const) : { width: size.widthMm * 1000, height: size.heightMm * 1000 }
-  return printHtml(parent, html, dir, pageSize)
+  const pageSize = { width: size.widthMm * 1000, height: size.heightMm * 1000 }
+  return printHtml(parent, html, dir, pageSize, deviceName)
+}
+
+const THERMAL_PRINTER_PATTERN =
+  /thermal|热敏|pos|58\s?mm|80\s?mm|xp-|xprinter|hprt|zijiang|gainscha|corex|rp-\d|gp-\d/i
+export function resolveThermalPrinter(
+  printers: Array<{ name: string; displayName: string }>,
+  configured: string,
+): string | undefined {
+  if (configured) {
+    const match = printers.find(
+      (printer) => printer.name === configured || printer.displayName === configured,
+    )
+    if (match) return match.name
+  }
+  return printers.find((printer) =>
+    THERMAL_PRINTER_PATTERN.test(`${printer.name} ${printer.displayName}`),
+  )?.name
 }
 
 export async function savePage(
@@ -191,9 +257,17 @@ export async function savePage(
   layout: LayoutSettings,
 ): Promise<string | null> {
   const { buffers } = await buildPage(resultSetId, layout)
+  return saveBuffers(parent, buffers, layout.paper)
+}
+
+export async function saveBuffers(
+  parent: BrowserWindow | null,
+  buffers: Buffer[],
+  label: string,
+): Promise<string | null> {
   const options = {
-    title: `保存 ${layout.paper} 错题图片`,
-    defaultPath: `错题打印_${layout.paper}.png`,
+    title: `保存 ${label} 错题图片`,
+    defaultPath: `错题打印_${label}.png`,
     filters: [
       { name: 'PNG 图片', extensions: ['png'] },
       { name: 'JPEG 图片', extensions: ['jpg', 'jpeg'] },
@@ -231,7 +305,7 @@ export async function printPage(
   layout: LayoutSettings,
 ): Promise<boolean> {
   const { buffers } = await buildPage(resultSetId, layout)
-  return printBuffers(parent, buffers, layout.paper)
+  return printBuffers(parent, buffers, PAPER_SIZES[layout.paper])
 }
 
 export async function printHtml(
@@ -239,6 +313,7 @@ export async function printHtml(
   html: string,
   existingDir?: string,
   pageSize: NonNullable<Parameters<WebContents['print']>[0]>['pageSize'] = 'A4',
+  deviceName?: string,
 ): Promise<boolean> {
   const window = new BrowserWindow({
     ...(parent ? { parent } : {}),
@@ -258,7 +333,13 @@ export async function printHtml(
   }
   return new Promise((resolve) => {
     window.webContents.print(
-      { silent: false, printBackground: true, pageSize, margins: { marginType: 'none' } },
+      {
+        silent: Boolean(deviceName),
+        ...(deviceName ? { deviceName } : {}),
+        printBackground: true,
+        pageSize,
+        margins: { marginType: 'none' },
+      },
       (success) => {
         window.destroy()
         void cleanup()

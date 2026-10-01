@@ -1,4 +1,6 @@
 import type {
+  AbilityRequest,
+  AbilityResponse,
   AuthSession,
   BookEntryDto,
   BookRandomResult,
@@ -142,7 +144,7 @@ export function getCaptcha(): Promise<CaptchaInfo> {
 export async function login(requestBody: LoginRequest): Promise<AuthSession> {
   const data = await request<TokenPair & { user: AuthUserDto }>('/api/auth/login', {
     method: 'POST',
-    body: { ...requestBody, clientLabel: requestBody.clientLabel ?? '盈盈错题库桌面端' },
+    body: { ...requestBody, clientLabel: requestBody.clientLabel ?? '拾星错题本桌面端' },
   })
   setAuthTokens(data.token, data.refreshToken)
   return toSession(data.user)
@@ -180,6 +182,40 @@ export async function aiErase(imageBase64: string): Promise<AiEraseResult> {
   )
   if (!data?.imageBase64) throw new ApiError(500, '接口成功返回，但没有擦除后的图片。')
   return { imageBase64: data.imageBase64, requestId: data.requestId, traceId: data.traceId }
+}
+
+export interface CropEnhanceResult {
+  imageBase64: string | null
+  width: number | null
+  height: number | null
+  position: number[] | null
+  angle: number | null
+  requestId?: string | undefined
+  traceId?: string | undefined
+}
+
+export function cropEnhance(body: {
+  imageBase64: string
+  enhanceType?: number
+  adjustOrientation?: boolean
+}): Promise<CropEnhanceResult> {
+  return request<CropEnhanceResult>('/api/ai/crop-enhance', {
+    method: 'POST',
+    body,
+    auth: true,
+    timeoutMs: 120_000,
+  })
+}
+
+export function getAbility(params: AbilityRequest): Promise<AbilityResponse> {
+  const query = new URLSearchParams()
+  if (params.grade !== undefined) query.set('grade', String(params.grade))
+  if (params.term !== undefined) query.set('term', String(params.term))
+  if (params.subject) query.set('subject', params.subject)
+  if (params.start) query.set('start', params.start)
+  if (params.end) query.set('end', params.end)
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<AbilityResponse>(`/api/user/ability${suffix}`, { auth: true })
 }
 
 export function bookAddEntry(body: {

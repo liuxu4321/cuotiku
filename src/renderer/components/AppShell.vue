@@ -44,7 +44,7 @@ async function logout(): Promise<void> {
       <div class="sidebar-heading">
         <div class="app-identity">
           <Images :size="22" /><span
-            ><strong>盈盈错题库</strong><small>v{{ store.version || '…' }}</small></span
+            ><strong>拾星错题本</strong><small>v{{ store.version || '…' }}</small></span
           >
         </div>
         <button
@@ -79,19 +79,17 @@ async function logout(): Promise<void> {
           >
             <UserRound v-if="collapsed" :size="18" /><span v-else>{{ auth.session?.phone }}</span>
           </button>
-          <div v-if="popover" class="auth-popover" role="dialog" aria-label="账号有效期信息">
+          <div v-if="popover" class="auth-popover" role="dialog" aria-label="账号信息">
             <strong>{{ auth.session?.phone }}</strong>
             <dl>
               <dt>会员号</dt>
               <dd>{{ auth.session?.memberNo || '未绑定' }}</dd>
               <dt>AI 权限</dt>
               <dd>{{ auth.session?.aiEnabled ? '已开通' : '未开通' }}</dd>
-              <dt>登录有效期至</dt>
+              <dt>会员有效期</dt>
               <dd>{{ auth.session?.tokenExpiresAt || '静默续期中' }}</dd>
-              <dt>续期策略</dt>
-              <dd>30 天内使用自动续期</dd>
             </dl>
-            <button class="secondary-button" type="button" @click="logout">退出登录</button>
+            <button class="danger-button" type="button" @click="logout">退出登录</button>
           </div>
         </div>
         <button

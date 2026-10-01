@@ -18,12 +18,21 @@ interface StoreShape {
 const defaultConfig: AppConfig = {
   theme: 'system',
   releaseChannel: releaseChannelSchema.catch('stable').parse(process.env.UPDATE_CHANNEL),
-  layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
+  layout: {
+    paper: 'A4',
+    mode: 'auto',
+    gapMm: 8,
+    marginMm: 10,
+    printMode: 'normal',
+    thermalSize: '80x60',
+  },
   processing: { enhance: true, enhanceStrength: 55 },
   grade: 1,
   term: 1,
   subject: '语文',
   bookDir: join(homedir(), '.cuotiku'),
+  thermalPrinter: '',
+  templateId: 'cuotiben-2up',
 }
 const defaultWindowBounds: WindowBounds = { width: 1380, height: 840 }
 const store = new Store<StoreShape>({

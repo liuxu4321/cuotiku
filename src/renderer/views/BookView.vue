@@ -57,7 +57,7 @@ watch(
       return
     }
     previewTimer = window.setTimeout(() => {
-      void store.refreshPreview(composed.value.slice(), paper.value)
+      void store.refreshPreview(pageRequest())
     }, 300)
   },
   { deep: true },
@@ -83,8 +83,16 @@ async function removeEntry(id: string): Promise<void> {
   const index = selected.value.indexOf(id)
   if (index >= 0) selected.value.splice(index, 1)
 }
+function pageRequest() {
+  return {
+    entryIds: composed.value.slice(),
+    paper: paper.value,
+    mode: 'normal' as const,
+    thermalSize: '80x60' as const,
+  }
+}
 function printNow(): void {
-  void store.printBook(composed.value.slice(), paper.value).then((success) => {
+  void store.printBook(pageRequest()).then((success) => {
     if (success) void store.refresh()
   })
 }

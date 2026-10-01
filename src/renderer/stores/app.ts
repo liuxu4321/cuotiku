@@ -5,12 +5,21 @@ import type { AppConfig, PlatformInfo, RuntimeConfig, UpdateState } from '@share
 const defaultConfig: AppConfig = {
   theme: 'system',
   releaseChannel: 'stable',
-  layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
+  layout: {
+    paper: 'A4',
+    mode: 'auto',
+    gapMm: 8,
+    marginMm: 10,
+    printMode: 'normal',
+    thermalSize: '80x60',
+  },
   processing: { enhance: true, enhanceStrength: 55 },
   grade: 1,
   term: 1,
   subject: '语文',
   bookDir: '',
+  thermalPrinter: '',
+  templateId: 'cuotiben-2up',
 }
 export const useAppStore = defineStore('app', {
   state: () => ({

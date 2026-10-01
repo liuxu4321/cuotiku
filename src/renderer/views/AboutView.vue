@@ -24,7 +24,7 @@ const platformText = computed(() => {
       <div class="about-hero">
         <span class="about-logo"><Images :size="30" /></span>
         <div>
-          <strong>盈盈错题库</strong>
+          <strong>拾星错题本</strong>
           <small>yycuotiku · 错题收集 / 组卷 / 打印一体化</small>
         </div>
       </div>

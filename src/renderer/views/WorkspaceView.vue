@@ -4,6 +4,7 @@ import {
   BookMarked,
   BookOpen,
   Calculator,
+  Crop,
   Eraser,
   Hand,
   ImagePlus,
@@ -12,9 +13,11 @@ import {
   Minus,
   MousePointer2,
   Printer,
+  RefreshCw,
   RotateCcw,
   RotateCw,
   Save,
+  ScanLine,
   Trash2,
   Undo2,
   ZoomIn,
@@ -23,10 +26,13 @@ import PageHeader from '@renderer/components/PageHeader.vue'
 import AppDialog from '@renderer/components/AppDialog.vue'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
 import PlanetDialog from '@renderer/components/PlanetDialog.vue'
+import ScannerDialog from '@renderer/components/ScannerDialog.vue'
 import ImageCanvas from '@renderer/components/editor/ImageCanvas.vue'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
+import { THERMAL_SIZES } from '@shared/types'
+import { templateById } from '@renderer/templates'
 import type { ErrorType, Subject, Term } from '@shared/types'
 
 const app = useAppStore()
@@ -36,17 +42,39 @@ const mode = ref<'select' | 'pan'>('select')
 const canvas = ref<InstanceType<typeof ImageCanvas> | null>(null)
 let refreshTimer = 0
 const errorTypes: ErrorType[] = ['马虎', '不会', '概念不清', '其他']
-const eraseLabel = computed(() =>
-  store.busy ? '正在去手写…' : store.isErased ? '已去手写' : '去手写',
-)
 const grade = computed(() => app.config.grade)
 const term = computed(() => app.config.term)
 const subject = computed(() => app.config.subject)
+const thermalLabel = computed(
+  () => THERMAL_SIZES.find((size) => size.id === app.config.layout.thermalSize)?.label ?? '',
+)
+const templateName = computed(() => templateById(app.config.templateId).name)
+const templateCards = computed(() => templateById(app.config.templateId).cardsPerPage)
+const headMeta = computed(() => {
+  const layout = app.config.layout
+  const pages = store.pagePreview?.pages.length
+  const scale =
+    store.pagePreview && store.pagePreview.scalePercent < 100
+      ? ` · 缩放 ${store.pagePreview.scalePercent}%`
+      : ''
+  const suffix = pages ? ` · ${pages} 页${scale}` : ''
+  if (layout.printMode === 'thermal') return `热敏 ${thermalLabel.value} · 每题一页${suffix}`
+  if (layout.printMode === 'template')
+    return `模板 ${templateName.value} · 每页 ${templateCards.value} 卡${suffix}`
+  const modeText =
+    layout.mode === 'single'
+      ? '单列'
+      : layout.mode === 'double'
+        ? '双列'
+        : `自动 ${store.pagePreview?.columns ?? 1} 列`
+  return `${layout.paper} · ${modeText}${suffix}`
+})
 const bookDialog = ref(false)
 const bookTypes = ref<ErrorType[]>([])
 const bookAdded = ref(false)
 const loginDialog = ref(false)
 const planetDialog = ref(false)
+const scannerDialog = ref(false)
 const pendingAction = ref<null | 'book' | 'save' | 'print'>(null)
 
 function eraseGate(): void {
@@ -54,7 +82,14 @@ function eraseGate(): void {
     loginDialog.value = true
     return
   }
-  void store.erase()
+  void store.eraseAll()
+}
+function enhanceGate(): void {
+  if (!auth.loggedIn) {
+    loginDialog.value = true
+    return
+  }
+  void store.enhanceAll()
 }
 function runAction(action: 'book' | 'save' | 'print'): void {
   if (action === 'book') openBookDialog()
@@ -105,6 +140,13 @@ watch(
     }, 280)
   },
 )
+watch(
+  () => app.config.layout,
+  () => {
+    void store.refreshPagePreview()
+  },
+  { deep: true },
+)
 onBeforeUnmount(() => window.clearTimeout(refreshTimer))
 
 function undoSelection(): void {
@@ -119,6 +161,9 @@ function angleInput(event: Event): void {
 }
 function zoomOut(): void {
   canvas.value?.zoomBy(1 / 1.2)
+}
+function scannerImport(): void {
+  scannerDialog.value = true
 }
 function zoomIn(): void {
   canvas.value?.zoomBy(1.2)
@@ -173,7 +218,14 @@ async function confirmAddToBook(): Promise<void> {
 
 <template>
   <section class="workspace-page">
-    <PageHeader title="错题收集" description="导入照片，旋转校正后框选错题">
+    <div v-if="store.enhancing || store.erasing" class="app-loading-mask" role="status">
+      <div class="app-loading-card">
+        <RefreshCw :size="22" class="spinning" />
+        <strong>{{ store.enhancing ? store.enhanceMessage : store.eraseMessage }}</strong>
+        <small>正在处理图片，请稍候，勿关闭应用。</small>
+      </div>
+    </div>
+    <PageHeader title="错题收集">
       <template #title>
         <h1>错题收集</h1>
         <select class="inline-select" :value="grade" aria-label="年级" @change="gradeInput">
@@ -193,58 +245,72 @@ async function confirmAddToBook(): Promise<void> {
     <div class="editor-toolbar">
       <div class="segmented">
         <button
+          class="icon-action"
           type="button"
           :class="{ active: subject === '语文' }"
-          title="语文"
+          data-tip="语文"
           aria-label="语文"
           @click="subjectInput('语文')"
         >
-          <BookOpen :size="16" />语文
+          <BookOpen :size="16" />
         </button>
         <button
+          class="icon-action"
           type="button"
           :class="{ active: subject === '数学' }"
-          title="数学"
+          data-tip="数学"
           aria-label="数学"
           @click="subjectInput('数学')"
         >
-          <Calculator :size="16" />数学
+          <Calculator :size="16" />
         </button>
         <button
+          class="icon-action"
           type="button"
           :class="{ active: subject === '英语' }"
-          title="英语"
+          data-tip="英语"
           aria-label="英语"
           @click="subjectInput('英语')"
         >
-          <Languages :size="16" />英语
+          <Languages :size="16" />
         </button>
       </div>
       <span class="toolbar-divider" />
       <button
         class="primary-button icon-action"
         type="button"
-        title="导入图片"
-        aria-label="导入图片"
+        data-tip="导入本地图片"
+        aria-label="导入本地图片"
         @click="store.importImages"
       >
         <ImagePlus :size="17" />
       </button>
+      <button
+        class="primary-button icon-action"
+        type="button"
+        data-tip="高拍仪导入"
+        aria-label="高拍仪导入"
+        @click="scannerImport"
+      >
+        <ScanLine :size="17" />
+      </button>
       <span class="toolbar-divider" />
       <div class="segmented">
         <button
+          class="icon-action"
           type="button"
           :class="{ active: mode === 'select' }"
-          title="框选/调整"
+          data-tip="框选/调整"
           aria-label="框选/调整"
           @click="mode = 'select'"
         >
           <MousePointer2 :size="16" />
         </button>
         <button
+          class="icon-action"
           type="button"
           :class="{ active: mode === 'pan' }"
-          title="移动图片"
+          data-tip="移动图片"
           aria-label="移动图片"
           @click="mode = 'pan'"
         >
@@ -252,21 +318,69 @@ async function confirmAddToBook(): Promise<void> {
         </button>
       </div>
       <span class="toolbar-divider" />
-      <button class="icon-action" title="缩小" @click="zoomOut"><Minus :size="17" /></button>
-      <button class="icon-action" title="放大" @click="zoomIn"><ZoomIn :size="17" /></button>
-      <button class="icon-action" title="向左旋转 90°" @click="store.rotateQuarter(-1)">
+      <button
+        class="icon-action"
+        type="button"
+        :disabled="
+          !store.images.length ||
+          store.enhancing ||
+          store.erasing ||
+          store.outputBusy !== null ||
+          (auth.loggedIn && !auth.aiEnabled)
+        "
+        :data-tip="auth.loggedIn && !auth.aiEnabled ? '当前账号未开通 AI 权限' : '切边增强'"
+        aria-label="切边增强"
+        @click="enhanceGate"
+      >
+        <RefreshCw v-if="store.enhancing" :size="17" class="spinning" />
+        <Crop v-else :size="17" />
+      </button>
+      <button
+        class="icon-action"
+        type="button"
+        :disabled="
+          !store.images.length ||
+          store.enhancing ||
+          store.erasing ||
+          store.outputBusy !== null ||
+          (auth.loggedIn && !auth.aiEnabled)
+        "
+        :data-tip="auth.loggedIn && !auth.aiEnabled ? '当前账号未开通 AI 权限' : '去手写'"
+        aria-label="去手写"
+        @click="eraseGate"
+      >
+        <RefreshCw v-if="store.erasing" :size="17" class="spinning" />
+        <Eraser v-else :size="17" />
+      </button>
+      <button class="icon-action" data-tip="缩小" aria-label="缩小" @click="zoomOut">
+        <Minus :size="17" />
+      </button>
+      <button class="icon-action" data-tip="放大" aria-label="放大" @click="zoomIn">
+        <ZoomIn :size="17" />
+      </button>
+      <button
+        class="icon-action"
+        data-tip="向左旋转 90°"
+        aria-label="向左旋转 90°"
+        @click="store.rotateQuarter(-1)"
+      >
         <RotateCcw :size="17" />
       </button>
-      <button class="icon-action" title="向右旋转 90°" @click="store.rotateQuarter(1)">
+      <button
+        class="icon-action"
+        data-tip="向右旋转 90°"
+        aria-label="向右旋转 90°"
+        @click="store.rotateQuarter(1)"
+      >
         <RotateCw :size="17" />
       </button>
-      <button class="icon-action" title="适合窗口" aria-label="适合窗口" @click="fitView">
+      <button class="icon-action" data-tip="适合窗口" aria-label="适合窗口" @click="fitView">
         <Maximize :size="17" />
       </button>
       <span class="toolbar-divider" />
       <button
         class="icon-action"
-        title="撤销框选"
+        data-tip="撤销框选"
         aria-label="撤销框选"
         :disabled="!store.activeImage?.selections.length"
         @click="undoSelection"
@@ -275,7 +389,7 @@ async function confirmAddToBook(): Promise<void> {
       </button>
       <button
         class="icon-action"
-        title="清空选框"
+        data-tip="清空选框"
         aria-label="清空选框"
         :disabled="!store.activeImage?.selections.length"
         @click="clearSelections"
@@ -284,42 +398,34 @@ async function confirmAddToBook(): Promise<void> {
       </button>
       <div class="toolbar-actions">
         <button
-          class="solid-action"
+          class="solid-action icon-action"
           type="button"
-          :disabled="
-            !store.questionCount ||
-            store.busy ||
-            store.isErased ||
-            (auth.loggedIn && !auth.aiEnabled)
-          "
-          :title="auth.loggedIn && !auth.aiEnabled ? '当前账号未开通 AI 权限' : undefined"
-          @click="eraseGate"
-        >
-          <Eraser :size="17" />{{ eraseLabel }}
-        </button>
-        <button
-          class="solid-action"
-          type="button"
-          :disabled="!store.result || store.busy || store.outputBusy !== null"
+          :disabled="!store.result || store.enhancing || store.erasing || store.outputBusy !== null"
+          :data-tip="bookAdded ? '已加入错题集' : '加入错题集'"
+          aria-label="加入错题集"
           @click="addToBookGate"
         >
-          <BookMarked :size="17" />{{ bookAdded ? '已加入' : '加入错题集' }}
+          <BookMarked :size="16" />
         </button>
         <button
-          class="solid-action"
+          class="solid-action icon-action"
           type="button"
-          :disabled="!store.result || store.busy || store.outputBusy !== null"
+          :disabled="!store.result || store.enhancing || store.erasing || store.outputBusy !== null"
+          :data-tip="store.outputBusy === 'save' ? '正在保存…' : '保存图片'"
+          aria-label="保存图片"
           @click="saveGate"
         >
-          <Save :size="17" />{{ store.outputBusy === 'save' ? '正在保存…' : '保存图片' }}
+          <Save :size="16" />
         </button>
         <button
-          class="solid-action"
+          class="solid-action icon-action"
           type="button"
-          :disabled="!store.result || store.busy || store.outputBusy !== null"
+          :disabled="!store.result || store.enhancing || store.erasing || store.outputBusy !== null"
+          :data-tip="store.outputBusy === 'print' ? '正在打印…' : '打印'"
+          aria-label="打印"
           @click="printGate"
         >
-          <Printer :size="17" />{{ store.outputBusy === 'print' ? '正在打印…' : '打印' }}
+          <Printer :size="16" />
         </button>
       </div>
     </div>
@@ -329,14 +435,6 @@ async function confirmAddToBook(): Promise<void> {
         <div class="panel-heading">
           <strong>错题照片</strong><span>{{ store.images.length }}</span>
         </div>
-        <button
-          v-if="!store.images.length"
-          class="empty-import"
-          type="button"
-          @click="store.importImages"
-        >
-          <ImagePlus :size="24" /><span>导入图片</span>
-        </button>
         <button
           v-for="image in store.images"
           :key="image.id"
@@ -381,28 +479,24 @@ async function confirmAddToBook(): Promise<void> {
       <aside class="preview-panel">
         <div class="panel-heading paper-heading">
           <strong>纸张预览</strong>
+          <span class="paper-head-meta">{{ headMeta }}</span>
         </div>
         <div class="page-preview" :class="{ stale: store.resultStale }">
           <div v-if="!store.pagePreview" class="panel-empty">框选后自动生成排版预览</div>
-          <template v-else
-            ><div class="page-meta">
-              {{ store.pagePreview.columns }} 列 · {{ store.pagePreview.pages.length }} 页<span
-                v-if="store.pagePreview.scalePercent < 100"
-              >
-                · 缩放 {{ store.pagePreview.scalePercent }}%</span
-              >
-            </div>
+          <template v-else>
             <img
               v-for="(page, index) in store.pagePreview.pages"
               :key="index"
               :src="page"
               :alt="`排版预览第 ${index + 1} 页`"
-          /></template>
+            />
+          </template>
         </div>
       </aside>
     </div>
     <LoginDialog :open="loginDialog" @close="loginDialog = false" @success="onLoginSuccess" />
     <PlanetDialog :open="planetDialog" @close="onPlanetClose" />
+    <ScannerDialog :open="scannerDialog" @close="scannerDialog = false" />
     <AppDialog
       :open="bookDialog"
       title="加入错题集"

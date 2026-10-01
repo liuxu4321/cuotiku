@@ -91,7 +91,7 @@ jobs:
         run: |
           shopt -s nullglob
           RELEASE_FILES=(release/*.exe release/*.exe.blockmap "release/${UPDATE_CHANNEL}.yml")
-          RELEASE_ARGS=(release create "${GITHUB_REF_NAME}" "${RELEASE_FILES[@]}" --verify-tag --title "${GITHUB_REF_NAME}" --notes "盈盈错题库 ${GITHUB_REF_NAME}")
+          RELEASE_ARGS=(release create "${GITHUB_REF_NAME}" "${RELEASE_FILES[@]}" --verify-tag --title "${GITHUB_REF_NAME}" --notes "拾星错题本 ${GITHUB_REF_NAME}")
           if [[ "${IS_PRERELEASE}" == "true" ]]; then
             RELEASE_ARGS+=(--prerelease)
           fi

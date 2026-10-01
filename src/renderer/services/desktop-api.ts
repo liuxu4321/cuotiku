@@ -4,12 +4,21 @@ import { createDesktopAPI } from '@shared/desktop-api'
 let previewConfig: AppConfig = {
   theme: 'system',
   releaseChannel: 'stable',
-  layout: { paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 },
+  layout: {
+    paper: 'A4',
+    mode: 'auto',
+    gapMm: 8,
+    marginMm: 10,
+    printMode: 'normal',
+    thermalSize: '80x60',
+  },
   processing: { enhance: true, enhanceStrength: 55 },
   grade: 1,
   term: 1,
   subject: '语文',
   bookDir: '',
+  thermalPrinter: '',
+  templateId: 'cuotiben-2up',
 }
 const previewPlatform: PlatformInfo = {
   platform: 'browser',
@@ -39,8 +48,30 @@ const previewAPI: DesktopAPI = {
     window.open(url, '_blank', 'noopener,noreferrer')
   },
   selectImages: selectBrowserImages,
+  registerScannerImage: async (dataUrl) => {
+    const blob = await (await fetch(dataUrl)).blob()
+    const bitmap = await createImageBitmap(blob)
+    const image: ImportedImage = {
+      id: crypto.randomUUID(),
+      name: `高拍仪_${Date.now()}.jpg`,
+      width: bitmap.width,
+      height: bitmap.height,
+      previewDataUrl: dataUrl,
+    }
+    browserImages.set(image.id, image)
+    return image
+  },
+  enhanceImage: async (id) => {
+    const image = browserImages.get(id)
+    if (!image) throw new Error('原始图片已失效，请重新导入。')
+    return { image, enhanced: false, message: null }
+  },
   processCrops: desktopOnly,
-  eraseHandwriting: desktopOnly,
+  eraseImage: async (id) => {
+    const image = browserImages.get(id)
+    if (!image) throw new Error('原始图片已失效，请重新导入。')
+    return { image, enhanced: false, message: null }
+  },
   getCaptcha: desktopOnly,
   login: desktopOnly,
   logout: desktopOnly,
@@ -49,6 +80,8 @@ const previewAPI: DesktopAPI = {
   buildPagePreview: desktopOnly,
   savePage: desktopOnly,
   printPage: desktopOnly,
+  printSvgPages: desktopOnly,
+  saveSvgPages: desktopOnly,
   listBookEntries: desktopOnly,
   addBookEntries: desktopOnly,
   removeBookEntry: desktopOnly,
@@ -58,6 +91,8 @@ const previewAPI: DesktopAPI = {
   randomBookEntries: desktopOnly,
   openLogDirectory: async () => undefined,
   selectDirectory: async () => null,
+  listPrinters: async () => [],
+  getAbility: desktopOnly,
   getConfig: async () => ({ ...previewConfig }),
   setConfig: async (config) => {
     previewConfig = structuredClone(config)
@@ -87,6 +122,7 @@ function selectBrowserImages(): Promise<ImportedImage[]> {
       async () => {
         const images = await Promise.all(Array.from(input.files ?? []).map(fileToImage))
         input.remove()
+        images.forEach((image) => browserImages.set(image.id, image))
         resolve(images)
       },
       { once: true },
@@ -95,6 +131,7 @@ function selectBrowserImages(): Promise<ImportedImage[]> {
     input.click()
   })
 }
+const browserImages = new Map<string, ImportedImage>()
 async function fileToImage(file: File): Promise<ImportedImage> {
   const previewDataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()

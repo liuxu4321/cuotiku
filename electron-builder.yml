@@ -1,5 +1,5 @@
 appId: com.yycuotiku.app
-productName: 盈盈错题库
+productName: 拾星错题本
 artifactName: yycuotiku-${version}-${os}-${arch}.${ext}
 asar: true
 generateUpdatesFilesForAllChannels: true
@@ -36,6 +36,8 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSCameraUsageDescription: 用于连接高拍仪或摄像头采集错题图片。
   target:
     - target: dmg
       arch:

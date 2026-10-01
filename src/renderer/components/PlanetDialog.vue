@@ -26,7 +26,7 @@ function openPlanet(): void {
   <AppDialog
     :open="open"
     wide
-    title="加入知识星球「盈盈错题库」"
+    title="加入知识星球「拾星错题本」"
     description="基础功能免费；加入星球开通会员后即可使用完整功能。"
     @close="emit('close')"
   >
@@ -35,7 +35,7 @@ function openPlanet(): void {
         <strong>扫码加入知识星球</strong>
         <img class="login-qr" :src="planetQr" alt="知识星球二维码" />
         <ol>
-          <li>扫码或搜索「盈盈错题库」加入知识星球。</li>
+          <li>扫码或搜索「拾星错题本」加入知识星球。</li>
           <li>在星球内私信管理员你的手机号。</li>
           <li>管理员开通账号后，在桌面端登录使用会员功能。</li>
         </ol>

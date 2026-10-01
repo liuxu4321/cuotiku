@@ -3,11 +3,24 @@ import { z } from 'zod'
 export const themePreferenceSchema = z.enum(['light', 'dark', 'system'])
 export const releaseChannelSchema = z.enum(['stable', 'beta'])
 export const paperSizeSchema = z.enum(['A4', 'B5'])
+export const thermalSizeSchema = z.enum([
+  '57x30',
+  '57x50',
+  '80x40',
+  '80x50',
+  '80x60',
+  '80x80',
+  '80x100',
+  '80x120',
+])
+export const printModeSchema = z.enum(['normal', 'thermal', 'template'])
 export const layoutSettingsSchema = z.object({
   paper: paperSizeSchema.default('A4'),
   mode: z.enum(['auto', 'single', 'double']),
   gapMm: z.number().min(2).max(20),
   marginMm: z.number().min(5).max(25),
+  printMode: printModeSchema.default('normal'),
+  thermalSize: thermalSizeSchema.default('80x60'),
 })
 export const processingSettingsSchema = z.object({
   enhance: z.boolean(),
@@ -62,6 +75,8 @@ export const collectionEntrySchema = z.object({
   thumbDataUrl: z.string(),
 })
 export const bookEntryIdSchema = z.string().min(1)
+export const imageIdSchema = z.string().min(1)
+export const dataUrlSchema = z.string().min(1)
 export const bookPracticeSchema = z.array(z.string().min(1)).min(1)
 export const bookRandomRequestSchema = z.object({
   grade: z.number().int().min(1).max(9).nullish(),
@@ -74,9 +89,28 @@ export const bookRandomRequestSchema = z.object({
     其他: z.number().int().min(0).max(100).optional(),
   }),
 })
+export const svgPagesRequestSchema = z.object({
+  svgs: z.array(z.string().min(1)).min(1),
+  paper: paperSizeSchema,
+})
+export const abilityRequestSchema = z.object({
+  grade: z.number().int().min(1).max(9).optional(),
+  term: z.number().int().min(1).max(2).optional(),
+  subject: subjectSchema.optional(),
+  start: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  end: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+})
 export const bookPageRequestSchema = z.object({
   entryIds: z.array(z.string().min(1)).min(1),
   paper: paperSizeSchema,
+  mode: printModeSchema.default('normal'),
+  thermalSize: thermalSizeSchema.default('80x60'),
 })
 export const pagePreviewRequestSchema = z.object({
   resultSetId: z.string().min(1),
@@ -85,12 +119,21 @@ export const pagePreviewRequestSchema = z.object({
 export const appConfigSchema = z.object({
   theme: themePreferenceSchema.default('system'),
   releaseChannel: releaseChannelSchema.default('stable'),
-  layout: layoutSettingsSchema.default({ paper: 'A4', mode: 'auto', gapMm: 8, marginMm: 10 }),
+  layout: layoutSettingsSchema.default({
+    paper: 'A4',
+    mode: 'auto',
+    gapMm: 8,
+    marginMm: 10,
+    printMode: 'normal',
+    thermalSize: '80x60',
+  }),
   processing: processingSettingsSchema.default({ enhance: true, enhanceStrength: 55 }),
   grade: z.number().int().min(1).max(9).default(1),
   term: termSchema.default(1),
   subject: subjectSchema.default('语文'),
   bookDir: z.string().default(''),
+  thermalPrinter: z.string().default(''),
+  templateId: z.string().default('cuotiben-2up'),
 })
 export const externalUrlSchema = z
   .string()

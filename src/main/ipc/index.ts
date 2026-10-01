@@ -1,24 +1,42 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { OpenDialogOptions } from 'electron'
+import sharp from 'sharp'
 import log from 'electron-log/main'
 import { ipcChannels, type IpcChannel, type IpcInvokeMap } from '@shared/ipc'
 import {
+  abilityRequestSchema,
   appConfigSchema,
   bookAddRequestSchema,
   bookEntryIdSchema,
   bookPageRequestSchema,
   bookPracticeSchema,
+  svgPagesRequestSchema,
   bookRandomRequestSchema,
   cropRequestSchema,
+  dataUrlSchema,
+  imageIdSchema,
   loginRequestSchema,
   pagePreviewRequestSchema,
 } from '@shared/schemas'
 import { canUseBuiltInAutoUpdate, getPlatformName } from '@shared/platform'
 import { getConfig, setConfig } from '@main/services/config'
 import { assertAllowedExternalUrl } from '@main/services/url'
-import { processCrops, registerImage } from '@main/services/image-service'
-import { eraseHandwriting } from '@main/services/erase-service'
-import { getCaptcha, login, logout, me, onTokenCleared } from '@main/services/api-client'
+import {
+  processCrops,
+  registerImage,
+  enhanceImage,
+  eraseRegisteredImage,
+  registerImageDataUrl,
+  getResultSet,
+} from '@main/services/image-service'
+import {
+  getCaptcha,
+  login,
+  logout,
+  me,
+  onTokenCleared,
+  getAbility,
+} from '@main/services/api-client'
 import { getRuntimeConfig } from '@main/services/runtime-config'
 import {
   addEntries,
@@ -33,9 +51,14 @@ import {
   BOOK_NOTES,
   buildPage,
   composePages,
+  composeThermalPages,
+  PAPER_SIZES,
   printBuffers,
   printPage,
+  resolveThermalPrinter,
+  saveBuffers,
   savePage,
+  thermalSizeById,
 } from '@main/services/output-service'
 import type { UpdateService } from '@main/updater'
 import type { AuthSession } from '@shared/types'
@@ -82,8 +105,10 @@ export function registerIpcHandlers(updateService: UpdateService): void {
     return Promise.all(result.filePaths.map(registerImage))
   })
   handle(ipcChannels.imagesProcessCrops, (value) => processCrops(cropRequestSchema.parse(value)))
-  handle(ipcChannels.imagesEraseHandwriting, (value) =>
-    eraseHandwriting(cropRequestSchema.parse(value)),
+  handle(ipcChannels.imagesEnhance, (id) => enhanceImage(imageIdSchema.parse(id)))
+  handle(ipcChannels.imagesErase, (id) => eraseRegisteredImage(imageIdSchema.parse(id)))
+  handle(ipcChannels.imagesRegisterScanner, (dataUrl) =>
+    registerImageDataUrl(dataUrlSchema.parse(dataUrl)),
   )
   handle(ipcChannels.authCaptcha, () => getCaptcha())
   handle(ipcChannels.authLogin, async (value) => {
@@ -98,10 +123,26 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   handle(ipcChannels.authMe, () => me())
   handle(ipcChannels.pageBuildPreview, async (value) => {
     const request = pagePreviewRequestSchema.parse(value)
+    if (request.layout.printMode === 'thermal') {
+      const crops = getResultSet(request.resultSetId)
+      if (!crops.length) throw new Error('请先至少框选一道错题。')
+      return (await composeThermalPages(crops, thermalSizeById(request.layout.thermalSize))).preview
+    }
     return (await buildPage(request.resultSetId, request.layout)).preview
   })
   ipcMain.handle(ipcChannels.pageSave, async (event, value) => {
     const request = pagePreviewRequestSchema.parse(value)
+    if (request.layout.printMode === 'thermal') {
+      const size = thermalSizeById(request.layout.thermalSize)
+      const crops = getResultSet(request.resultSetId)
+      if (!crops.length) throw new Error('请先至少框选一道错题。')
+      const composed = await composeThermalPages(crops, size)
+      return saveBuffers(
+        BrowserWindow.fromWebContents(event.sender),
+        composed.buffers,
+        `热敏${size.widthMm}x${size.heightMm}`,
+      )
+    }
     return savePage(
       BrowserWindow.fromWebContents(event.sender),
       request.resultSetId,
@@ -110,11 +151,39 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   })
   ipcMain.handle(ipcChannels.pagePrint, async (event, value) => {
     const request = pagePreviewRequestSchema.parse(value)
+    if (request.layout.printMode === 'thermal') {
+      const size = thermalSizeById(request.layout.thermalSize)
+      const crops = getResultSet(request.resultSetId)
+      if (!crops.length) throw new Error('请先至少框选一道错题。')
+      const composed = await composeThermalPages(crops, size)
+      const printers = await event.sender.getPrintersAsync()
+      const deviceName = resolveThermalPrinter(printers, getConfig().thermalPrinter)
+      return printBuffers(
+        BrowserWindow.fromWebContents(event.sender),
+        composed.buffers,
+        size,
+        deviceName,
+      )
+    }
     return printPage(
       BrowserWindow.fromWebContents(event.sender),
       request.resultSetId,
       request.layout,
     )
+  })
+  ipcMain.handle(ipcChannels.printSvgPages, async (event, value) => {
+    const request = svgPagesRequestSchema.parse(value)
+    const buffers = await rasterizeSvgs(request.svgs)
+    return printBuffers(
+      BrowserWindow.fromWebContents(event.sender),
+      buffers,
+      PAPER_SIZES[request.paper],
+    )
+  })
+  ipcMain.handle(ipcChannels.saveSvgPages, async (event, value) => {
+    const request = svgPagesRequestSchema.parse(value)
+    const buffers = await rasterizeSvgs(request.svgs)
+    return saveBuffers(BrowserWindow.fromWebContents(event.sender), buffers, `模板${request.paper}`)
   })
   handle(ipcChannels.appOpenLogDirectory, async () => {
     await shell.openPath(log.transports.file.getFile().path.replace(/[/\\][^/\\]+$/, ''))
@@ -129,6 +198,15 @@ export function registerIpcHandlers(updateService: UpdateService): void {
       : await dialog.showOpenDialog(options)
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
+  ipcMain.handle(ipcChannels.printersList, async (event) => {
+    const printers = await event.sender.getPrintersAsync()
+    return printers.map((printer) => ({
+      name: printer.name,
+      displayName: printer.displayName,
+      isDefault: (printer as { isDefault?: boolean }).isDefault ?? false,
+    }))
+  })
+  handle(ipcChannels.userAbility, (value) => getAbility(abilityRequestSchema.parse(value)))
   handle(ipcChannels.bookAdd, (value) => addEntries(bookAddRequestSchema.parse(value)))
   handle(ipcChannels.bookList, () => listEntries())
   handle(ipcChannels.bookRemove, async (id) => {
@@ -136,16 +214,23 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   })
   handle(ipcChannels.bookBuildPreview, async (value) => {
     const request = bookPageRequestSchema.parse(value)
+    const crops = await notedCrops(request.entryIds)
+    if (request.mode === 'thermal') {
+      return (await composeThermalPages(crops, thermalSizeById(request.thermalSize))).preview
+    }
     const layout = { ...getConfig().layout, paper: request.paper }
-    const noted = await notedCrops(request.entryIds)
-    return (await composePages(noted, layout)).preview
+    return (await composePages(crops, layout)).preview
   })
   ipcMain.handle(ipcChannels.bookPrint, async (event, value) => {
     const request = bookPageRequestSchema.parse(value)
-    const layout = { ...getConfig().layout, paper: request.paper }
-    const noted = await notedCrops(request.entryIds)
-    const { buffers } = await composePages(noted, layout)
-    return printBuffers(BrowserWindow.fromWebContents(event.sender), buffers, request.paper)
+    const crops = await notedCrops(request.entryIds)
+    const size =
+      request.mode === 'thermal' ? thermalSizeById(request.thermalSize) : PAPER_SIZES[request.paper]
+    const composed =
+      request.mode === 'thermal'
+        ? await composeThermalPages(crops, size)
+        : await composePages(crops, { ...getConfig().layout, paper: request.paper })
+    return printBuffers(BrowserWindow.fromWebContents(event.sender), composed.buffers, size)
   })
   handle(ipcChannels.bookPractice, async (value) => {
     await bumpPracticeCount(bookPracticeSchema.parse(value))
@@ -171,6 +256,14 @@ function broadcastAuth(session: AuthSession | null): void {
   for (const window of BrowserWindow.getAllWindows()) {
     window.webContents.send(ipcChannels.authStateChanged, session)
   }
+}
+
+async function rasterizeSvgs(svgs: string[]): Promise<Buffer[]> {
+  const buffers: Buffer[] = []
+  for (const svg of svgs) {
+    buffers.push(await sharp(Buffer.from(svg)).png().toBuffer())
+  }
+  return buffers
 }
 
 async function notedCrops(entryIds: string[]) {
