@@ -181,6 +181,38 @@ export const templates: TemplateDefinition[] = [
     cardsPerPage: 2,
     buildPages: buildTemplate({ cardsPerPage: 2, paper: 'A4', cols: 2 }),
   },
+  {
+    id: 'cuotiben-b5-1up',
+    name: '错题本 · B5 每页 1 卡',
+    description: 'B5 竖版整页一卡，书写空间最大。',
+    paper: 'B5',
+    cardsPerPage: 1,
+    buildPages: buildTemplate({ cardsPerPage: 1, paper: 'B5', ruled: true }),
+  },
+  {
+    id: 'cuotiben-b5-2up',
+    name: '错题本 · B5 每页 2 卡',
+    description: 'B5 竖版两卡，左图右解析，经典版式。',
+    paper: 'B5',
+    cardsPerPage: 2,
+    buildPages: buildTemplate({ cardsPerPage: 2, paper: 'B5' }),
+  },
+  {
+    id: 'cuotiben-b5-2up-ruled',
+    name: '错题本 · B5 2 卡带横线',
+    description: 'B5 竖版两卡，正解&解析区带书写横线。',
+    paper: 'B5',
+    cardsPerPage: 2,
+    buildPages: buildTemplate({ cardsPerPage: 2, paper: 'B5', ruled: true }),
+  },
+  {
+    id: 'cuotiben-b5-3up',
+    name: '错题本 · B5 每页 3 卡',
+    description: 'B5 竖版三卡，省纸紧凑版式。',
+    paper: 'B5',
+    cardsPerPage: 3,
+    buildPages: buildTemplate({ cardsPerPage: 3, paper: 'B5' }),
+  },
 ]
 
 export function templateById(id: string): TemplateDefinition {

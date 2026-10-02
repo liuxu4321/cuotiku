@@ -57,7 +57,8 @@ pnpm package
 ## 发布与自动升级
 
 - 修改 `package.json` 版本号并提交；打标签推送触发 GitHub Actions：`git tag v1.0.0 && git push origin v1.0.0`。
-- `.github/workflows/release.yml` 在 windows-latest 上构建 NSIS 安装包，并通过 electron-builder 发布 GitHub Release（含自动升级元数据 `latest.yml`）；标签带 `-beta` 等后缀时走 beta 通道。
+- `.github/workflows/release.yml` 在 windows-latest 上构建 NSIS 安装包（含自动升级元数据 `latest.yml`）；标签带 `-beta` 等后缀时走 beta 通道。
+- 自动升级源为腾讯云 COS（`electron-builder.yml` 中 `publish.provider: generic`，地址 `https://generic-1257458058.cos.ap-guangzhou.myqcloud.com/yycuotiku`）：CI 用 `coscmd` 上传安装包、`.blockmap` 与 `latest.yml`（清单设 `Cache-Control: no-cache`），客户端 electron-updater 从该地址检查与下载，规避国内访问 GitHub 的问题。同时仍发布 GitHub Release 作为归档。COS 密钥通过仓库 Secrets `COS_SECRET_ID` / `COS_SECRET_KEY` 注入。
 - 应用内置 electron-updater（Windows/macOS）：启动 15 秒后检查，并每 4 小时复查；也可从「帮助」菜单、「关于」页或「设置 → 高级」手动操作。
 - 「帮助」菜单会随更新状态切换为检查、下载、下载进度或重启安装；设置中可选择稳定版/测试版通道。下载完成后始终由用户确认重启，不会强制中断当前工作。
 
