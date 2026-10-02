@@ -25,6 +25,30 @@ export interface ImportedImage {
   previewDataUrl: string
 }
 
+export interface SplitQuestion {
+  index: number
+  x: number
+  y: number
+  width: number
+  height: number
+  nx: number
+  ny: number
+  nWidth: number
+  nHeight: number
+}
+export interface SplitResult {
+  width: number
+  height: number
+  questions: SplitQuestion[]
+  requestId?: string | undefined
+  traceId?: string | undefined
+}
+export interface PaperProcessResult {
+  image: ImportedImage
+  imageKind: string
+  questions: SplitQuestion[]
+  traceId?: string | undefined
+}
 export interface EnhanceResult {
   image: ImportedImage
   enhanced: boolean
@@ -238,6 +262,8 @@ export interface DesktopAPI {
   enhanceImage(id: string): Promise<EnhanceResult>
   processCrops(request: CropRequest): Promise<CropResultSet>
   eraseImage(id: string): Promise<EnhanceResult>
+  splitQuestions(id: string): Promise<SplitResult>
+  paperProcess(id: string): Promise<PaperProcessResult>
   getCaptcha(): Promise<CaptchaInfo>
   login(request: LoginRequest): Promise<AuthSession>
   logout(): Promise<void>

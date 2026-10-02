@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   BookMarked,
   BookOpen,
   Calculator,
   Crop,
   Eraser,
+  FileCog,
   Hand,
   ImagePlus,
   Languages,
@@ -18,6 +20,8 @@ import {
   RotateCw,
   Save,
   ScanLine,
+  Scissors,
+  SlidersHorizontal,
   Trash2,
   Undo2,
   ZoomIn,
@@ -27,17 +31,19 @@ import AppDialog from '@renderer/components/AppDialog.vue'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
 import PlanetDialog from '@renderer/components/PlanetDialog.vue'
 import ScannerDialog from '@renderer/components/ScannerDialog.vue'
+import SplitDialog from '@renderer/components/SplitDialog.vue'
 import ImageCanvas from '@renderer/components/editor/ImageCanvas.vue'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
 import { THERMAL_SIZES } from '@shared/types'
 import { templateById } from '@renderer/templates'
-import type { ErrorType, Subject, Term } from '@shared/types'
+import type { ErrorType, SplitQuestion, Subject, Term } from '@shared/types'
 
 const app = useAppStore()
 const auth = useAuthStore()
 const store = useWorkspaceStore()
+const router = useRouter()
 const mode = ref<'select' | 'pan'>('select')
 const canvas = ref<InstanceType<typeof ImageCanvas> | null>(null)
 let refreshTimer = 0
@@ -75,6 +81,9 @@ const bookAdded = ref(false)
 const loginDialog = ref(false)
 const planetDialog = ref(false)
 const scannerDialog = ref(false)
+const splitDialog = ref(false)
+const splitQuestions = ref<SplitQuestion[]>([])
+const splitPreview = ref('')
 const pendingAction = ref<null | 'book' | 'save' | 'print'>(null)
 
 function eraseGate(): void {
@@ -90,6 +99,52 @@ function enhanceGate(): void {
     return
   }
   void store.enhanceAll()
+}
+async function splitGate(): Promise<void> {
+  if (!auth.loggedIn) {
+    loginDialog.value = true
+    return
+  }
+  const result = await store.splitActive()
+  if (!result) return
+  if (!result.questions.length) {
+    store.error = '未检测到题框，请手动框选。'
+    return
+  }
+  openSplitDialog(result.questions)
+}
+async function paperGate(): Promise<void> {
+  if (!auth.loggedIn) {
+    loginDialog.value = true
+    return
+  }
+  const result = await store.processPaper()
+  if (!result) return
+  if (!result.questions.length) {
+    store.error = '试卷处理完成，但未检测到题框，请手动框选。'
+    return
+  }
+  openSplitDialog(result.questions)
+}
+function openSplitDialog(questions: SplitQuestion[]): void {
+  splitQuestions.value = questions
+  splitPreview.value = store.activeImage?.previewDataUrl ?? ''
+  splitDialog.value = true
+}
+function confirmSplit(pickedQuestions: SplitQuestion[]): void {
+  const image = store.activeImage
+  if (!image) return
+  store.setSelections(
+    pickedQuestions.map((question) => ({
+      id: crypto.randomUUID(),
+      imageId: image.id,
+      x: question.nx,
+      y: question.ny,
+      width: question.nWidth,
+      height: question.nHeight,
+    })),
+  )
+  splitDialog.value = false
 }
 function runAction(action: 'book' | 'save' | 'print'): void {
   if (action === 'book') openBookDialog()
@@ -218,10 +273,20 @@ async function confirmAddToBook(): Promise<void> {
 
 <template>
   <section class="workspace-page">
-    <div v-if="store.enhancing || store.erasing" class="app-loading-mask" role="status">
+    <div
+      v-if="store.enhancing || store.erasing || store.aiTask"
+      class="app-loading-mask"
+      role="status"
+    >
       <div class="app-loading-card">
         <RefreshCw :size="22" class="spinning" />
-        <strong>{{ store.enhancing ? store.enhanceMessage : store.eraseMessage }}</strong>
+        <strong>{{
+          store.aiTask
+            ? store.aiTaskMessage
+            : store.enhancing
+              ? store.enhanceMessage
+              : store.eraseMessage
+        }}</strong>
         <small>正在处理图片，请稍候，勿关闭应用。</small>
       </div>
     </div>
@@ -352,6 +417,40 @@ async function confirmAddToBook(): Promise<void> {
         <RefreshCw v-if="store.erasing" :size="17" class="spinning" />
         <Eraser v-else :size="17" />
       </button>
+      <button
+        class="icon-action"
+        type="button"
+        :disabled="
+          !store.activeImage ||
+          store.enhancing ||
+          store.erasing ||
+          store.aiTask !== null ||
+          store.outputBusy !== null ||
+          (auth.loggedIn && !auth.aiEnabled)
+        "
+        :data-tip="auth.loggedIn && !auth.aiEnabled ? '当前账号未开通 AI 权限' : '切题'"
+        aria-label="切题"
+        @click="splitGate"
+      >
+        <Scissors :size="17" />
+      </button>
+      <button
+        class="icon-action"
+        type="button"
+        :disabled="
+          !store.activeImage ||
+          store.enhancing ||
+          store.erasing ||
+          store.aiTask !== null ||
+          store.outputBusy !== null ||
+          (auth.loggedIn && !auth.aiEnabled)
+        "
+        :data-tip="auth.loggedIn && !auth.aiEnabled ? '当前账号未开通 AI 权限' : '试卷处理'"
+        aria-label="试卷处理"
+        @click="paperGate"
+      >
+        <FileCog :size="17" />
+      </button>
       <button class="icon-action" data-tip="缩小" aria-label="缩小" @click="zoomOut">
         <Minus :size="17" />
       </button>
@@ -427,6 +526,15 @@ async function confirmAddToBook(): Promise<void> {
         >
           <Printer :size="16" />
         </button>
+        <button
+          class="solid-action icon-action"
+          type="button"
+          data-tip="排版与模板设置"
+          aria-label="排版与模板设置"
+          @click="router.push('/settings?section=layout')"
+        >
+          <SlidersHorizontal :size="16" />
+        </button>
       </div>
     </div>
 
@@ -478,7 +586,7 @@ async function confirmAddToBook(): Promise<void> {
 
       <aside class="preview-panel">
         <div class="panel-heading paper-heading">
-          <strong>纸张预览</strong>
+          <strong>预览</strong>
           <span class="paper-head-meta">{{ headMeta }}</span>
         </div>
         <div class="page-preview" :class="{ stale: store.resultStale }">
@@ -497,6 +605,13 @@ async function confirmAddToBook(): Promise<void> {
     <LoginDialog :open="loginDialog" @close="loginDialog = false" @success="onLoginSuccess" />
     <PlanetDialog :open="planetDialog" @close="onPlanetClose" />
     <ScannerDialog :open="scannerDialog" @close="scannerDialog = false" />
+    <SplitDialog
+      :open="splitDialog"
+      :questions="splitQuestions"
+      :preview-url="splitPreview"
+      @close="splitDialog = false"
+      @confirm="confirmSplit"
+    />
     <AppDialog
       :open="bookDialog"
       title="加入错题集"

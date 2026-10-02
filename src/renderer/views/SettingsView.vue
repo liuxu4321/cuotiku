@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowLeft, Database, Image, KeyRound, LayoutTemplate, Palette, Search } from '@lucide/vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
@@ -16,7 +16,13 @@ const app = useAppStore()
 const auth = useAuthStore()
 const workspace = useWorkspaceStore()
 const router = useRouter()
+const route = useRoute()
 const active = ref<Section>('layout')
+const sectionIds: Section[] = ['layout', 'image', 'account', 'book', 'appearance']
+const querySection = route.query.section
+if (typeof querySection === 'string' && sectionIds.includes(querySection as Section)) {
+  active.value = querySection as Section
+}
 const search = ref('')
 const saved = ref(false)
 const loginDialog = ref(false)

@@ -6,6 +6,8 @@ import type {
   BookRandomResult,
   CaptchaInfo,
   LoginRequest,
+  SplitQuestion,
+  SplitResult,
 } from '@shared/types'
 import { clearAuthTokens, getAuthToken, getRefreshToken, setAuthTokens } from './config'
 import { getRuntimeConfig } from './runtime-config'
@@ -216,6 +218,33 @@ export function getAbility(params: AbilityRequest): Promise<AbilityResponse> {
   if (params.end) query.set('end', params.end)
   const suffix = query.toString() ? `?${query.toString()}` : ''
   return request<AbilityResponse>(`/api/user/ability${suffix}`, { auth: true })
+}
+
+export function splitQuestions(imageBase64: string): Promise<SplitResult> {
+  return request<SplitResult>('/api/ai/split-questions', {
+    method: 'POST',
+    body: { imageBase64 },
+    auth: true,
+    timeoutMs: 120_000,
+  })
+}
+
+export interface PaperProcessRaw {
+  traceId: string
+  imageBase64: string
+  imageKind: string
+  width: number
+  height: number
+  questions: SplitQuestion[]
+}
+
+export function paperProcess(imageBase64: string): Promise<PaperProcessRaw> {
+  return request<PaperProcessRaw>('/api/ai/paper-process', {
+    method: 'POST',
+    body: { imageBase64 },
+    auth: true,
+    timeoutMs: 180_000,
+  })
 }
 
 export function bookAddEntry(body: {

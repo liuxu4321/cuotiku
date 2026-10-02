@@ -33,8 +33,14 @@ function createFallbackAPI(): DesktopAPI {
     })),
     enhanceImage: vi.fn(async (id: string) => ({
       image: { id, name: 'a.png', width: 1, height: 1, previewDataUrl: '' },
-      enhanced: false,
+      enhanced: true,
       message: null,
+    })),
+    splitQuestions: vi.fn(async () => ({ width: 1, height: 1, questions: [] })),
+    paperProcess: vi.fn(async (id: string) => ({
+      image: { id, name: 'a.png', width: 1, height: 1, previewDataUrl: '' },
+      imageKind: 'erased',
+      questions: [],
     })),
     processCrops: vi.fn(async () => ({
       resultSetId: 'result',

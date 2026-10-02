@@ -72,6 +72,8 @@ const previewAPI: DesktopAPI = {
     if (!image) throw new Error('原始图片已失效，请重新导入。')
     return { image, enhanced: false, message: null }
   },
+  splitQuestions: desktopOnly,
+  paperProcess: desktopOnly,
   getCaptcha: desktopOnly,
   login: desktopOnly,
   logout: desktopOnly,

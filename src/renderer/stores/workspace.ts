@@ -30,6 +30,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     enhanceMessage: '',
     erasing: false,
     eraseMessage: '',
+    aiTask: null as null | 'split' | 'paper',
+    aiTaskMessage: '',
     error: null as string | null,
     resultRevision: -1,
   }),
@@ -181,6 +183,45 @@ export const useWorkspaceStore = defineStore('workspace', {
       } catch (error) {
         this.error = friendlyError(error)
       }
+    },
+    async splitActive() {
+      const image = this.activeImage
+      if (!image || this.aiTask) return null
+      this.aiTask = 'split'
+      this.aiTaskMessage = '正在检测题框…'
+      this.error = null
+      try {
+        return await desktopAPI.splitQuestions(image.id)
+      } catch (error) {
+        this.error = friendlyError(error)
+        return null
+      } finally {
+        this.aiTask = null
+        this.aiTaskMessage = ''
+      }
+    },
+    async processPaper() {
+      const image = this.activeImage
+      if (!image || this.aiTask) return null
+      this.aiTask = 'paper'
+      this.aiTaskMessage = '试卷处理中（增强 / 切题 / 去手写）…'
+      this.error = null
+      try {
+        const result = await desktopAPI.paperProcess(image.id)
+        this.replaceImage(image.id, result.image)
+        return result
+      } catch (error) {
+        this.error = friendlyError(error)
+        return null
+      } finally {
+        this.aiTask = null
+        this.aiTaskMessage = ''
+      }
+    },
+    replaceImage(id: string, image: ImportedImage) {
+      const index = this.images.findIndex((item) => item.id === id)
+      const target = index >= 0 ? this.images[index] : undefined
+      if (target && index >= 0) this.images[index] = { ...target, ...image }
     },
     async addToBook(errorTypes: ErrorType[]): Promise<number> {
       if (!this.result) return 0

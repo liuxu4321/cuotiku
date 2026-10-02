@@ -15,6 +15,8 @@ export function createDesktopAPI(
     enhanceImage: partialBridge?.enhanceImage ?? fallback.enhanceImage,
     processCrops: partialBridge?.processCrops ?? fallback.processCrops,
     eraseImage: partialBridge?.eraseImage ?? fallback.eraseImage,
+    splitQuestions: partialBridge?.splitQuestions ?? fallback.splitQuestions,
+    paperProcess: partialBridge?.paperProcess ?? fallback.paperProcess,
     getCaptcha: partialBridge?.getCaptcha ?? fallback.getCaptcha,
     login: partialBridge?.login ?? fallback.login,
     logout: partialBridge?.logout ?? fallback.logout,

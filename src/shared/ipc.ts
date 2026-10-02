@@ -16,9 +16,11 @@ import type {
   LoginRequest,
   PagePreview,
   PagePreviewRequest,
+  PaperProcessResult,
   PlatformInfo,
   PrinterInfo,
   RuntimeConfig,
+  SplitResult,
   SvgPagesRequest,
   UpdateState,
 } from './types'
@@ -32,6 +34,8 @@ export const ipcChannels = {
   imagesSelect: 'images:select',
   imagesEnhance: 'images:enhance',
   imagesErase: 'images:erase',
+  imagesSplit: 'images:split',
+  imagesPaperProcess: 'images:paper-process',
   imagesRegisterScanner: 'images:register-scanner',
   imagesProcessCrops: 'images:process-crops',
   authCaptcha: 'auth:captcha',
@@ -72,6 +76,8 @@ export interface IpcInvokeMap {
   [ipcChannels.imagesSelect]: { args: []; result: ImportedImage[] }
   [ipcChannels.imagesEnhance]: { args: [id: string]; result: EnhanceResult }
   [ipcChannels.imagesErase]: { args: [id: string]; result: EnhanceResult }
+  [ipcChannels.imagesSplit]: { args: [id: string]; result: SplitResult }
+  [ipcChannels.imagesPaperProcess]: { args: [id: string]; result: PaperProcessResult }
   [ipcChannels.imagesRegisterScanner]: { args: [dataUrl: string]; result: ImportedImage }
   [ipcChannels.imagesProcessCrops]: { args: [request: CropRequest]; result: CropResultSet }
   [ipcChannels.authCaptcha]: { args: []; result: CaptchaInfo }

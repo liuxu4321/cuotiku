@@ -9,8 +9,10 @@ import type {
   EnhanceResult,
   ImportedImage,
   SelectionRegion,
+  SplitQuestion,
+  SplitResult,
 } from '@shared/types'
-import { ApiError, cropEnhance, aiErase } from './api-client'
+import { ApiError, cropEnhance, aiErase, splitQuestions, paperProcess } from './api-client'
 
 interface SourceImage {
   path: string
@@ -184,6 +186,43 @@ function eraseFallbackMessage(error: unknown): string {
     return `去手写失败（${error.code}），已保留原图。`
   }
   return '去手写失败，已保留原图。'
+}
+
+export async function splitQuestionsFor(id: string): Promise<SplitResult> {
+  const source = sources.get(id)
+  if (!source) throw new Error('原始图片已失效，请重新导入。')
+  const buffer = await readFile(source.path)
+  const encoded = await encodeForApi(buffer)
+  return splitQuestions(encoded)
+}
+
+export async function processPaper(
+  id: string,
+): Promise<{ image: ImportedImage; imageKind: string; questions: SplitQuestion[] }> {
+  const source = sources.get(id)
+  const original = registered.get(id)
+  if (!source || !original) throw new Error('原始图片已失效，请重新导入。')
+  const buffer = await readFile(source.path)
+  const encoded = await encodeForApi(buffer)
+  const result = await paperProcess(encoded)
+  const processed = Buffer.from(result.imageBase64, 'base64')
+  const cacheDir = importCacheDir()
+  await mkdir(cacheDir, { recursive: true })
+  const file = join(cacheDir, `${id}-paper.jpg`)
+  await writeFile(file, processed)
+  sources.set(id, { path: file, width: result.width, height: result.height })
+  const preview = await sharp(processed, { failOn: 'none' })
+    .resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 88 })
+    .toBuffer()
+  const image: ImportedImage = {
+    ...original,
+    width: result.width,
+    height: result.height,
+    previewDataUrl: toDataUrl(preview, 'image/jpeg'),
+  }
+  registered.set(id, image)
+  return { image, imageKind: result.imageKind, questions: result.questions }
 }
 
 async function encodeForApi(input: Buffer): Promise<string> {

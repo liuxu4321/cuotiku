@@ -28,6 +28,8 @@ import {
   eraseRegisteredImage,
   registerImageDataUrl,
   getResultSet,
+  splitQuestionsFor,
+  processPaper,
 } from '@main/services/image-service'
 import {
   getCaptcha,
@@ -107,6 +109,8 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   handle(ipcChannels.imagesProcessCrops, (value) => processCrops(cropRequestSchema.parse(value)))
   handle(ipcChannels.imagesEnhance, (id) => enhanceImage(imageIdSchema.parse(id)))
   handle(ipcChannels.imagesErase, (id) => eraseRegisteredImage(imageIdSchema.parse(id)))
+  handle(ipcChannels.imagesSplit, (id) => splitQuestionsFor(imageIdSchema.parse(id)))
+  handle(ipcChannels.imagesPaperProcess, (id) => processPaper(imageIdSchema.parse(id)))
   handle(ipcChannels.imagesRegisterScanner, (dataUrl) =>
     registerImageDataUrl(dataUrlSchema.parse(dataUrl)),
   )

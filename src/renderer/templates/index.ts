@@ -135,7 +135,7 @@ function emptyItem(): TemplateItem {
 export const templates: TemplateDefinition[] = [
   {
     id: 'cuotiben-1up',
-    name: '错题本 · 每页 1 卡',
+    name: 'A4 单卡',
     description: 'A4 竖版整页一卡，书写空间最大。',
     paper: 'A4',
     cardsPerPage: 1,
@@ -143,7 +143,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-2up',
-    name: '错题本 · 每页 2 卡',
+    name: 'A4 双卡',
     description: 'A4 竖版两卡，左图右解析，经典版式。',
     paper: 'A4',
     cardsPerPage: 2,
@@ -151,7 +151,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-2up-ruled',
-    name: '错题本 · 2 卡带横线',
+    name: 'A4 双卡横线',
     description: 'A4 竖版两卡，正解&解析区带书写横线。',
     paper: 'A4',
     cardsPerPage: 2,
@@ -159,7 +159,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-3up',
-    name: '错题本 · 每页 3 卡',
+    name: 'A4 三卡',
     description: 'A4 竖版三卡，省纸紧凑版式。',
     paper: 'A4',
     cardsPerPage: 3,
@@ -167,7 +167,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-4up',
-    name: '错题本 · 每页 4 卡',
+    name: 'A4 四卡',
     description: 'A4 竖版四卡，适合小尺寸错题速览。',
     paper: 'A4',
     cardsPerPage: 4,
@@ -175,7 +175,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-2up-landscape',
-    name: '错题本 · 横版 2 卡',
+    name: 'A4 横版双卡',
     description: 'A4 横版左右两卡，适合宽幅题目截图。',
     paper: 'A4',
     cardsPerPage: 2,
@@ -183,7 +183,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-b5-1up',
-    name: '错题本 · B5 每页 1 卡',
+    name: 'B5 单卡',
     description: 'B5 竖版整页一卡，书写空间最大。',
     paper: 'B5',
     cardsPerPage: 1,
@@ -191,7 +191,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-b5-2up',
-    name: '错题本 · B5 每页 2 卡',
+    name: 'B5 双卡',
     description: 'B5 竖版两卡，左图右解析，经典版式。',
     paper: 'B5',
     cardsPerPage: 2,
@@ -199,7 +199,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-b5-2up-ruled',
-    name: '错题本 · B5 2 卡带横线',
+    name: 'B5 双卡横线',
     description: 'B5 竖版两卡，正解&解析区带书写横线。',
     paper: 'B5',
     cardsPerPage: 2,
@@ -207,7 +207,7 @@ export const templates: TemplateDefinition[] = [
   },
   {
     id: 'cuotiben-b5-3up',
-    name: '错题本 · B5 每页 3 卡',
+    name: 'B5 三卡',
     description: 'B5 竖版三卡，省纸紧凑版式。',
     paper: 'B5',
     cardsPerPage: 3,

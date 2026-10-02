@@ -153,11 +153,13 @@ async function capture(): Promise<void> {
     const sw = guideRect.width / guideRect.scale
     const sh = guideRect.height / guideRect.scale
     const canvas = document.createElement('canvas')
-    canvas.width = Math.round(sw)
-    canvas.height = Math.round(sh)
+    canvas.width = Math.round(sh)
+    canvas.height = Math.round(sw)
     const context = canvas.getContext('2d')
     if (!context) throw new Error('无法创建画布。')
-    context.drawImage(element, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+    context.translate(canvas.width, 0)
+    context.rotate(Math.PI / 2)
+    context.drawImage(element, sx, sy, sw, sh, 0, 0, sw, sh)
     await store.addScannerImage(canvas.toDataURL('image/jpeg', 0.92))
     capturedCount.value += 1
   } catch (caught) {
