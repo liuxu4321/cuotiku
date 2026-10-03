@@ -7,6 +7,7 @@ import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
 import { desktopAPI } from '@renderer/services/desktop-api'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
+import AppDialog from '@renderer/components/AppDialog.vue'
 import { svgToDataUrl, templates, type TemplateDefinition } from '@renderer/templates'
 import { THERMAL_SIZES } from '@shared/types'
 import type { AppConfig, PrinterInfo } from '@shared/types'
@@ -27,6 +28,11 @@ const search = ref('')
 const saved = ref(false)
 const loginDialog = ref(false)
 const authError = ref('')
+const passwordDialog = ref(false)
+const passwordBusy = ref(false)
+const passwordError = ref('')
+const passwordNotice = ref('')
+const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const printers = ref<PrinterInfo[]>([])
 const draft = reactive<AppConfig>(cloneConfig(app.config))
 watch(
@@ -98,6 +104,47 @@ async function logout(): Promise<void> {
     await auth.logout()
   } catch (error) {
     authError.value = friendlyError(error)
+  }
+}
+function openPasswordDialog(): void {
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordError.value = ''
+  passwordNotice.value = ''
+  passwordDialog.value = true
+}
+function closePasswordDialog(): void {
+  passwordDialog.value = false
+}
+async function submitChangePassword(): Promise<void> {
+  passwordError.value = ''
+  const { oldPassword, newPassword, confirmPassword } = passwordForm
+  if (!oldPassword) {
+    passwordError.value = '请输入原密码。'
+    return
+  }
+  if (newPassword.length < 6 || newPassword.length > 64) {
+    passwordError.value = '新密码需为 6-64 位。'
+    return
+  }
+  if (newPassword !== confirmPassword) {
+    passwordError.value = '两次输入的新密码不一致。'
+    return
+  }
+  if (newPassword === oldPassword) {
+    passwordError.value = '新密码不能与原密码相同。'
+    return
+  }
+  passwordBusy.value = true
+  try {
+    await desktopAPI.changePassword({ oldPassword, newPassword })
+    passwordDialog.value = false
+    passwordNotice.value = '密码已修改，请使用新密码重新登录。'
+  } catch (error) {
+    passwordError.value = friendlyError(error)
+  } finally {
+    passwordBusy.value = false
   }
 }
 </script>
@@ -249,7 +296,12 @@ async function logout(): Promise<void> {
               <p>
                 有效期至：{{ auth.session.tokenExpiresAt || '静默续期中（30 天内使用自动续期）' }}
               </p>
-              <button class="secondary-button" type="button" @click="logout">退出登录</button>
+              <div class="account-actions">
+                <button class="secondary-button" type="button" @click="openPasswordDialog">
+                  修改密码
+                </button>
+                <button class="secondary-button" type="button" @click="logout">退出登录</button>
+              </div>
             </div>
             <div v-else class="account-state">
               <p>
@@ -258,6 +310,7 @@ async function logout(): Promise<void> {
               </p>
               <button class="primary-button" type="button" @click="loginDialog = true">登录</button>
             </div>
+            <p v-if="passwordNotice" class="login-notice">{{ passwordNotice }}</p>
             <p v-if="authError" class="login-error">{{ authError }}</p>
           </div>
         </section>
@@ -277,7 +330,26 @@ async function logout(): Promise<void> {
           <h2>颜色模式</h2>
           <div class="preference-group">
             <div class="preference-row preference-row-stacked">
-              <span><strong>主题</strong><small>选择浅色、深色或跟随系统。</small></span>
+              <span
+                ><strong>风格主题</strong><small>学生风格配色：默认 / 男生 / 女生。</small></span
+              >
+              <div class="segmented">
+                <button
+                  v-for="item in [
+                    { v: 'default', l: '默认' },
+                    { v: 'boy', l: '男生' },
+                    { v: 'girl', l: '女生' },
+                  ]"
+                  :key="item.v"
+                  :class="{ active: draft.uiTheme === item.v }"
+                  @click="draft.uiTheme = item.v as AppConfig['uiTheme']"
+                >
+                  {{ item.l }}
+                </button>
+              </div>
+            </div>
+            <div class="preference-row preference-row-stacked">
+              <span><strong>颜色模式</strong><small>选择浅色、深色或跟随系统。</small></span>
               <div class="segmented">
                 <button
                   v-for="theme in [
@@ -297,6 +369,47 @@ async function logout(): Promise<void> {
         </section>
       </div>
     </main>
+    <AppDialog
+      :open="passwordDialog"
+      title="修改密码"
+      description="修改成功后当前登录立即失效，需使用新密码重新登录。"
+      @close="closePasswordDialog"
+    >
+      <div class="password-form">
+        <label
+          >原密码
+          <input
+            v-model="passwordForm.oldPassword"
+            type="password"
+            autocomplete="current-password"
+          />
+        </label>
+        <label
+          >新密码（6-64 位）
+          <input v-model="passwordForm.newPassword" type="password" autocomplete="new-password" />
+        </label>
+        <label
+          >确认新密码
+          <input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            autocomplete="new-password"
+          />
+        </label>
+        <p v-if="passwordError" class="login-error">{{ passwordError }}</p>
+      </div>
+      <template #footer>
+        <button class="secondary-button" type="button" @click="closePasswordDialog">取消</button>
+        <button
+          class="primary-button"
+          type="button"
+          :disabled="passwordBusy"
+          @click="submitChangePassword"
+        >
+          {{ passwordBusy ? '提交中…' : '确认修改' }}
+        </button>
+      </template>
+    </AppDialog>
     <LoginDialog :open="loginDialog" @close="loginDialog = false" @success="loginDialog = false" />
   </div>
 </template>

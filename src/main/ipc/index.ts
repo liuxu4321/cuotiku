@@ -5,11 +5,13 @@ import log from 'electron-log/main'
 import { ipcChannels, type IpcChannel, type IpcInvokeMap } from '@shared/ipc'
 import {
   abilityRequestSchema,
+  agentRequestSchema,
   appConfigSchema,
   bookAddRequestSchema,
   bookEntryIdSchema,
   bookPageRequestSchema,
   bookPracticeSchema,
+  changePasswordRequestSchema,
   svgPagesRequestSchema,
   bookRandomRequestSchema,
   cropRequestSchema,
@@ -35,10 +37,12 @@ import {
   getCaptcha,
   login,
   logout,
+  changePassword,
   me,
   onTokenCleared,
   getAbility,
 } from '@main/services/api-client'
+import { runAgentAnalogy, runAgentExplain } from '@main/services/agent-service'
 import { getRuntimeConfig } from '@main/services/runtime-config'
 import {
   addEntries,
@@ -111,6 +115,8 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   handle(ipcChannels.imagesErase, (id) => eraseRegisteredImage(imageIdSchema.parse(id)))
   handle(ipcChannels.imagesSplit, (id) => splitQuestionsFor(imageIdSchema.parse(id)))
   handle(ipcChannels.imagesPaperProcess, (id) => processPaper(imageIdSchema.parse(id)))
+  handle(ipcChannels.agentExplain, (value) => runAgentExplain(agentRequestSchema.parse(value)))
+  handle(ipcChannels.agentAnalogy, (value) => runAgentAnalogy(agentRequestSchema.parse(value)))
   handle(ipcChannels.imagesRegisterScanner, (dataUrl) =>
     registerImageDataUrl(dataUrlSchema.parse(dataUrl)),
   )
@@ -124,6 +130,9 @@ export function registerIpcHandlers(updateService: UpdateService): void {
     await logout()
     broadcastAuth(null)
   })
+  handle(ipcChannels.authChangePassword, (value) =>
+    changePassword(changePasswordRequestSchema.parse(value)),
+  )
   handle(ipcChannels.authMe, () => me())
   handle(ipcChannels.pageBuildPreview, async (value) => {
     const request = pagePreviewRequestSchema.parse(value)

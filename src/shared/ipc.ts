@@ -1,6 +1,9 @@
 import type {
   AbilityRequest,
   AbilityResponse,
+  AgentAnalogyResult,
+  AgentExplainResult,
+  AgentRequest,
   AppConfig,
   AuthSession,
   BookAddRequest,
@@ -8,6 +11,7 @@ import type {
   BookRandomRequest,
   BookRandomResult,
   CaptchaInfo,
+  ChangePasswordRequest,
   CollectionEntry,
   CropRequest,
   CropResultSet,
@@ -36,11 +40,14 @@ export const ipcChannels = {
   imagesErase: 'images:erase',
   imagesSplit: 'images:split',
   imagesPaperProcess: 'images:paper-process',
+  agentExplain: 'agent:explain',
+  agentAnalogy: 'agent:analogy',
   imagesRegisterScanner: 'images:register-scanner',
   imagesProcessCrops: 'images:process-crops',
   authCaptcha: 'auth:captcha',
   authLogin: 'auth:login',
   authLogout: 'auth:logout',
+  authChangePassword: 'auth:change-password',
   authMe: 'auth:me',
   authStateChanged: 'auth:state-changed',
   pageBuildPreview: 'page:build-preview',
@@ -78,11 +85,14 @@ export interface IpcInvokeMap {
   [ipcChannels.imagesErase]: { args: [id: string]; result: EnhanceResult }
   [ipcChannels.imagesSplit]: { args: [id: string]; result: SplitResult }
   [ipcChannels.imagesPaperProcess]: { args: [id: string]; result: PaperProcessResult }
+  [ipcChannels.agentExplain]: { args: [request: AgentRequest]; result: AgentExplainResult }
+  [ipcChannels.agentAnalogy]: { args: [request: AgentRequest]; result: AgentAnalogyResult }
   [ipcChannels.imagesRegisterScanner]: { args: [dataUrl: string]; result: ImportedImage }
   [ipcChannels.imagesProcessCrops]: { args: [request: CropRequest]; result: CropResultSet }
   [ipcChannels.authCaptcha]: { args: []; result: CaptchaInfo }
   [ipcChannels.authLogin]: { args: [request: LoginRequest]; result: AuthSession }
   [ipcChannels.authLogout]: { args: []; result: void }
+  [ipcChannels.authChangePassword]: { args: [request: ChangePasswordRequest]; result: void }
   [ipcChannels.authMe]: { args: []; result: AuthSession | null }
   [ipcChannels.pageBuildPreview]: { args: [request: PagePreviewRequest]; result: PagePreview }
   [ipcChannels.pageSave]: { args: [request: PagePreviewRequest]; result: string | null }

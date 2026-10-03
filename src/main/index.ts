@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { configureLogging, log } from '@main/logging'
 import { clearImportCache } from '@main/services/image-service'
+import { startKeepalive, stopKeepalive } from '@main/services/keepalive'
 import { registerIpcHandlers } from '@main/ipc'
 import { installApplicationMenu } from '@main/menu'
 import { getConfig } from '@main/services/config'
@@ -51,6 +52,7 @@ if (!singleInstanceLock) {
     updateService.setChannel(getConfig().releaseChannel)
     updateService.initialize()
     registerIpcHandlers(updateService)
+    startKeepalive()
 
     const mainWindow = createMainWindow()
     updateService.attachWindow(mainWindow)
@@ -70,4 +72,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  stopKeepalive()
 })

@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
 import { desktopAPI } from '@renderer/services/desktop-api'
+import { templates } from '@renderer/templates'
 import type { AppConfig, PlatformInfo, RuntimeConfig, UpdateState } from '@shared/types'
 
 const defaultConfig: AppConfig = {
   theme: 'system',
+  uiTheme: 'default',
   releaseChannel: 'stable',
   layout: {
     paper: 'A4',
@@ -45,9 +47,13 @@ export const useAppStore = defineStore('app', {
         this.version = version
         this.platformInfo = platformInfo
         this.config = config
+        if (!templates.some((tpl) => tpl.id === config.templateId)) {
+          await this.saveConfig({ ...config, templateId: 'cuotiben-2up' })
+        }
         this.updateState = updateState
         this.runtimeConfig = runtimeConfig
         this.applyTheme(config.theme)
+        this.applyUiTheme(config.uiTheme)
         desktopAPI.onUpdateStateChanged((state) => {
           this.updateState = state
         })
@@ -61,6 +67,15 @@ export const useAppStore = defineStore('app', {
       const plain = JSON.parse(JSON.stringify(config)) as AppConfig
       this.config = await desktopAPI.setConfig(plain)
       this.applyTheme(this.config.theme)
+      this.applyUiTheme(this.config.uiTheme)
+    },
+    async setGrade(grade: number) {
+      if (grade === this.config.grade) return
+      await this.saveConfig({ ...this.config, grade })
+    },
+    async setTerm(term: AppConfig['term']) {
+      if (term === this.config.term) return
+      await this.saveConfig({ ...this.config, term })
     },
     async checkForUpdates() {
       this.updateState = await desktopAPI.checkForUpdates()
@@ -76,6 +91,9 @@ export const useAppStore = defineStore('app', {
     },
     applyTheme(theme: AppConfig['theme']) {
       document.documentElement.dataset.theme = theme
+    },
+    applyUiTheme(uiTheme: AppConfig['uiTheme']) {
+      document.documentElement.dataset.uitheme = uiTheme
     },
   },
 })

@@ -7,20 +7,27 @@ import LoginDialog from '@renderer/components/LoginDialog.vue'
 import { useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useAbilityStore } from '@renderer/stores/ability'
+import { ALL_SUBJECTS } from '@renderer/config/subjects'
 import type { Subject } from '@shared/types'
 
 const app = useAppStore()
 const auth = useAuthStore()
 const store = useAbilityStore()
-const grade = ref<number>(app.config.grade)
-const term = ref<number>(app.config.term)
+const grade = computed({
+  get: () => app.config.grade,
+  set: (value) => void app.setGrade(value),
+})
+const term = computed({
+  get: () => app.config.term,
+  set: (value) => void app.setTerm(value),
+})
 const subject = ref<Subject | '全部'>('全部')
 const start = ref('')
 const end = ref('')
 const loginDialog = ref(false)
 const activeTab = ref('overall')
 
-const subjects: Array<Subject | '全部'> = ['全部', '语文', '数学', '英语']
+const subjects: Array<Subject | '全部'> = ['全部', ...ALL_SUBJECTS]
 const tabs = computed(() => {
   if (!store.data) return [] as Array<{ key: string; label: string }>
   return [
@@ -62,7 +69,7 @@ watch(
 
 <template>
   <section class="page home-page">
-    <PageHeader title="首页" description="个人能力模型：五维雷达图与明细。" />
+    <PageHeader title="反躬自省" description="个人能力模型：五维雷达图与明细。" />
     <div v-if="store.error" class="workspace-alert">
       <span>{{ store.error }}</span
       ><button type="button" @click="store.error = null">关闭</button>
@@ -76,7 +83,7 @@ watch(
     <template v-else>
       <div class="home-filters">
         <select v-model="grade" class="inline-select" aria-label="年级">
-          <option v-for="item in 9" :key="item" :value="item">{{ item }}年级</option>
+          <option v-for="item in 12" :key="item" :value="item">{{ item }}年级</option>
         </select>
         <select v-model="term" class="inline-select" aria-label="学期">
           <option :value="1">上学期</option>

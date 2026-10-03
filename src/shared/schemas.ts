@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const themePreferenceSchema = z.enum(['light', 'dark', 'system'])
+export const uiThemeSchema = z.enum(['default', 'boy', 'girl'])
 export const releaseChannelSchema = z.enum(['stable', 'beta'])
 export const paperSizeSchema = z.enum(['A4', 'B5'])
 export const thermalSizeSchema = z.enum([
@@ -52,19 +53,23 @@ export const loginRequestSchema = z.object({
   captchaCode: z.string().min(1),
   clientLabel: z.string().max(64).optional(),
 })
-export const subjectSchema = z.enum(['语文', '数学', '英语'])
+export const changePasswordRequestSchema = z.object({
+  oldPassword: z.string().min(1),
+  newPassword: z.string().min(6).max(64),
+})
+export const subjectSchema = z.enum(['语文', '数学', '英语', '物理', '化学', '生物'])
 export const errorTypeSchema = z.enum(['马虎', '不会', '概念不清', '其他'])
 export const termSchema = z.union([z.literal(1), z.literal(2)])
 export const bookAddRequestSchema = z.object({
   resultSetId: z.string().min(1),
-  grade: z.number().int().min(1).max(9),
+  grade: z.number().int().min(1).max(12),
   term: termSchema.default(1),
   subject: subjectSchema,
   items: z.array(z.object({ errorType: errorTypeSchema })).min(1),
 })
 export const collectionEntrySchema = z.object({
   id: z.string().min(1),
-  grade: z.number().int().min(1).max(9),
+  grade: z.number().int().min(1).max(12),
   term: termSchema.nullable().default(null),
   subject: subjectSchema,
   errorType: errorTypeSchema,
@@ -78,8 +83,17 @@ export const bookEntryIdSchema = z.string().min(1)
 export const imageIdSchema = z.string().min(1)
 export const dataUrlSchema = z.string().min(1)
 export const bookPracticeSchema = z.array(z.string().min(1)).min(1)
+export const agentRequestSchema = z.object({
+  entryId: z.string().min(1).optional(),
+  imageBase64: z.string().min(1).optional(),
+  subject: z.string().min(1).optional(),
+  grade: z.number().int().min(1).max(9).optional(),
+  term: z.number().int().min(1).max(2).optional(),
+  errorType: z.string().min(1).optional(),
+  count: z.number().int().min(1).max(10).optional(),
+})
 export const bookRandomRequestSchema = z.object({
-  grade: z.number().int().min(1).max(9).nullish(),
+  grade: z.number().int().min(1).max(12).nullish(),
   term: termSchema.nullish(),
   subject: subjectSchema.nullish(),
   counts: z.object({
@@ -94,7 +108,7 @@ export const svgPagesRequestSchema = z.object({
   paper: paperSizeSchema,
 })
 export const abilityRequestSchema = z.object({
-  grade: z.number().int().min(1).max(9).optional(),
+  grade: z.number().int().min(1).max(12).optional(),
   term: z.number().int().min(1).max(2).optional(),
   subject: subjectSchema.optional(),
   start: z
@@ -118,6 +132,7 @@ export const pagePreviewRequestSchema = z.object({
 })
 export const appConfigSchema = z.object({
   theme: themePreferenceSchema.default('system'),
+  uiTheme: uiThemeSchema.default('default'),
   releaseChannel: releaseChannelSchema.default('stable'),
   layout: layoutSettingsSchema.default({
     paper: 'A4',
@@ -128,7 +143,7 @@ export const appConfigSchema = z.object({
     thermalSize: '80x60',
   }),
   processing: processingSettingsSchema.default({ enhance: true, enhanceStrength: 55 }),
-  grade: z.number().int().min(1).max(9).default(1),
+  grade: z.number().int().min(1).max(12).default(1),
   term: termSchema.default(1),
   subject: subjectSchema.default('语文'),
   bookDir: z.string().default(''),

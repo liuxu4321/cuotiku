@@ -3,18 +3,19 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Printer, Shuffle, Trash2 } from '@lucide/vue'
 import PageHeader from '@renderer/components/PageHeader.vue'
 import AppDialog from '@renderer/components/AppDialog.vue'
+import AppLoading from '@renderer/components/AppLoading.vue'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useBookStore } from '@renderer/stores/book'
+import { ALL_SUBJECTS } from '@renderer/config/subjects'
 import type { ErrorType, PaperSize, Subject, Term } from '@shared/types'
 import { desktopAPI } from '@renderer/services/desktop-api'
-import { friendlyError } from '@renderer/stores/app'
+import { friendlyError, useAppStore } from '@renderer/stores/app'
 
 const store = useBookStore()
 const auth = useAuthStore()
-const gradeFilter = ref<number | '全部'>('全部')
+const app = useAppStore()
 const subjectFilter = ref<Subject | '全部'>('全部')
-const termFilter = ref<Term | '全部'>('全部')
 const errorTypeFilter = ref<ErrorType | '全部'>('全部')
 const selected = ref<string[]>([])
 const composed = ref<string[]>([])
@@ -31,16 +32,16 @@ const randomCounts = ref<Record<ErrorType, number>>({
 })
 let previewTimer = 0
 
-const subjects: Array<Subject | '全部'> = ['全部', '语文', '数学', '英语']
+const subjects: Array<Subject | '全部'> = ['全部', ...ALL_SUBJECTS]
 const errorTypes: Array<ErrorType | '全部'> = ['全部', '马虎', '不会', '概念不清', '其他']
 const errorTypeOptions: ErrorType[] = ['马虎', '不会', '概念不清', '其他']
 
 const entries = computed(() =>
   store.entries.filter(
     (entry) =>
-      (gradeFilter.value === '全部' || entry.grade === gradeFilter.value) &&
+      entry.grade === app.config.grade &&
+      entry.term === app.config.term &&
       (subjectFilter.value === '全部' || entry.subject === subjectFilter.value) &&
-      (termFilter.value === '全部' || entry.term === termFilter.value) &&
       (errorTypeFilter.value === '全部' || entry.errorType === errorTypeFilter.value),
   ),
 )
@@ -48,6 +49,20 @@ const entries = computed(() =>
 onMounted(() => {
   void store.refresh()
 })
+async function gradeChange(event: Event): Promise<void> {
+  try {
+    await app.setGrade(Number((event.target as HTMLSelectElement).value))
+  } catch (error) {
+    store.error = friendlyError(error)
+  }
+}
+async function termChange(event: Event): Promise<void> {
+  try {
+    await app.setTerm(Number((event.target as HTMLSelectElement).value) as Term)
+  } catch (error) {
+    store.error = friendlyError(error)
+  }
+}
 watch(
   () => [composed.value.slice(), paper.value, auth.loggedIn],
   () => {
@@ -144,8 +159,8 @@ async function confirmRandom(): Promise<void> {
   }
   try {
     const result = await desktopAPI.randomBookEntries({
-      grade: gradeFilter.value === '全部' ? null : gradeFilter.value,
-      term: termFilter.value === '全部' ? null : termFilter.value,
+      grade: app.config.grade,
+      term: app.config.term,
       subject: subjectFilter.value === '全部' ? null : subjectFilter.value,
       counts,
     })
@@ -166,7 +181,7 @@ async function confirmRandom(): Promise<void> {
 
 <template>
   <section class="book-page">
-    <PageHeader title="错题组卷" />
+    <PageHeader title="温故知新" />
     <div v-if="store.error" class="workspace-alert">
       <span>{{ store.error }}</span
       ><button type="button" @click="store.error = null">关闭</button>
@@ -179,12 +194,20 @@ async function confirmRandom(): Promise<void> {
               {{ item === '全部' ? '全部科目' : item }}
             </option>
           </select>
-          <select v-model="gradeFilter" class="inline-select" aria-label="按年级筛选">
-            <option value="全部">全部年级</option>
-            <option v-for="item in 9" :key="item" :value="item">{{ item }}年级</option>
+          <select
+            class="inline-select"
+            aria-label="年级"
+            :value="app.config.grade"
+            @change="gradeChange"
+          >
+            <option v-for="item in 12" :key="item" :value="item">{{ item }}年级</option>
           </select>
-          <select v-model="termFilter" class="inline-select" aria-label="按学期筛选">
-            <option value="全部">全部学期</option>
+          <select
+            class="inline-select"
+            aria-label="学期"
+            :value="app.config.term"
+            @change="termChange"
+          >
             <option :value="1">上学期</option>
             <option :value="2">下学期</option>
           </select>
@@ -215,8 +238,14 @@ async function confirmRandom(): Promise<void> {
             </button>
           </span>
         </div>
-        <div v-if="!entries.length" class="panel-empty book-empty">
-          {{ store.loading ? '正在加载…' : '没有符合条件的错题，去工作台框选后加入。' }}
+        <AppLoading
+          v-if="store.loading && !entries.length"
+          compact
+          title="正在加载错题…"
+          description=""
+        />
+        <div v-else-if="!entries.length" class="panel-empty book-empty">
+          没有符合条件的错题，去工作台框选后加入。
         </div>
         <div v-else class="book-list">
           <article v-for="entry in entries" :key="entry.id" class="book-row">
@@ -265,7 +294,7 @@ async function confirmRandom(): Promise<void> {
           </span>
         </div>
         <div v-if="!auth.loggedIn" class="panel-empty book-empty">
-          错题组卷为登录功能，登录后即可使用云端错题本。
+          温故知新为登录功能，登录后即可使用云端错题本。
           <span class="book-cta-actions">
             <button class="primary-button" type="button" @click="loginDialog = true">登录</button>
           </span>

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { app } from 'electron'
 import sharp from 'sharp'
@@ -13,6 +13,7 @@ import type {
   SplitResult,
 } from '@shared/types'
 import { ApiError, cropEnhance, aiErase, splitQuestions, paperProcess } from './api-client'
+import { setKeepaliveState } from './keepalive'
 
 interface SourceImage {
   path: string
@@ -30,21 +31,64 @@ const sources = new Map<string, SourceImage>()
 const registered = new Map<string, ImportedImage>()
 const resultSets = new Map<string, StoredCrop[]>()
 const MAX_ENHANCE_BYTES = 7 * 1024 * 1024
+const IMPORT_MAX_EDGE = 2500
+const IMPORT_MAX_BYTES = 1024 * 1024
 
 function importCacheDir(): string {
   return join(app.getPath('userData'), 'import-cache')
 }
 
+async function compressForImport(
+  path: string,
+  id: string,
+): Promise<{ file: string; width: number; height: number } | null> {
+  try {
+    const original = await stat(path)
+    const metadata = await sharp(path, { failOn: 'none' }).rotate().metadata()
+    if (!metadata.width || !metadata.height) return null
+    const longEdge = Math.max(metadata.width, metadata.height)
+    if (longEdge <= IMPORT_MAX_EDGE && original.size <= IMPORT_MAX_BYTES) return null
+    let edge = Math.min(longEdge, IMPORT_MAX_EDGE)
+    let best: { data: Buffer; width: number; height: number } | null = null
+    for (let pass = 0; pass < 4; pass += 1) {
+      for (const quality of [90, 85, 80, 75]) {
+        const result = await sharp(path, { failOn: 'none' })
+          .rotate()
+          .flatten({ background: '#ffffff' })
+          .resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality, mozjpeg: true })
+          .toBuffer({ resolveWithObject: true })
+        if (!best || result.data.length < best.data.length) {
+          best = { data: result.data, width: result.info.width, height: result.info.height }
+        }
+        if (result.data.length <= IMPORT_MAX_BYTES) break
+      }
+      if (best && best.data.length <= IMPORT_MAX_BYTES) break
+      edge = Math.round(edge * 0.8)
+    }
+    if (!best) return null
+    const cacheDir = importCacheDir()
+    await mkdir(cacheDir, { recursive: true })
+    const file = join(cacheDir, `${id}-import.jpg`)
+    await writeFile(file, best.data)
+    return { file, width: best.width, height: best.height }
+  } catch {
+    return null
+  }
+}
+
 export async function registerImage(path: string): Promise<ImportedImage> {
-  const metadata = await sharp(path, { failOn: 'none' }).rotate().metadata()
+  const id = randomUUID()
+  const compressed = await compressForImport(path, id)
+  const sourcePath = compressed?.file ?? path
+  const metadata = await sharp(sourcePath, { failOn: 'none' }).rotate().metadata()
   if (!metadata.width || !metadata.height) throw new Error(`无法读取图片：${basename(path)}`)
   const swapsAxes =
     metadata.orientation !== undefined && metadata.orientation >= 5 && metadata.orientation <= 8
   const orientedWidth = swapsAxes ? metadata.height : metadata.width
   const orientedHeight = swapsAxes ? metadata.width : metadata.height
-  const id = randomUUID()
-  sources.set(id, { path, width: metadata.width, height: metadata.height })
-  const preview = await sharp(path, { failOn: 'none' })
+  sources.set(id, { path: sourcePath, width: metadata.width, height: metadata.height })
+  const preview = await sharp(sourcePath, { failOn: 'none' })
     .rotate()
     .resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: 88 })
@@ -61,6 +105,15 @@ export async function registerImage(path: string): Promise<ImportedImage> {
 }
 
 export async function enhanceImage(id: string): Promise<EnhanceResult> {
+  setKeepaliveState('busy')
+  try {
+    return await enhanceImageInner(id)
+  } finally {
+    setKeepaliveState('idle')
+  }
+}
+
+async function enhanceImageInner(id: string): Promise<EnhanceResult> {
   const source = sources.get(id)
   const original = registered.get(id)
   if (!source || !original) throw new Error('原始图片已失效，请重新导入。')
@@ -131,6 +184,15 @@ export async function clearImportCache(): Promise<void> {
 }
 
 export async function eraseRegisteredImage(id: string): Promise<EnhanceResult> {
+  setKeepaliveState('erasing')
+  try {
+    return await eraseRegisteredImageInner(id)
+  } finally {
+    setKeepaliveState('idle')
+  }
+}
+
+async function eraseRegisteredImageInner(id: string): Promise<EnhanceResult> {
   const source = sources.get(id)
   const original = registered.get(id)
   if (!source || !original) throw new Error('原始图片已失效，请重新导入。')
@@ -189,6 +251,15 @@ function eraseFallbackMessage(error: unknown): string {
 }
 
 export async function splitQuestionsFor(id: string): Promise<SplitResult> {
+  setKeepaliveState('busy')
+  try {
+    return await splitQuestionsForInner(id)
+  } finally {
+    setKeepaliveState('idle')
+  }
+}
+
+async function splitQuestionsForInner(id: string): Promise<SplitResult> {
   const source = sources.get(id)
   if (!source) throw new Error('原始图片已失效，请重新导入。')
   const buffer = await readFile(source.path)
@@ -197,6 +268,17 @@ export async function splitQuestionsFor(id: string): Promise<SplitResult> {
 }
 
 export async function processPaper(
+  id: string,
+): Promise<{ image: ImportedImage; imageKind: string; questions: SplitQuestion[] }> {
+  setKeepaliveState('busy')
+  try {
+    return await processPaperInner(id)
+  } finally {
+    setKeepaliveState('idle')
+  }
+}
+
+async function processPaperInner(
   id: string,
 ): Promise<{ image: ImportedImage; imageKind: string; questions: SplitQuestion[] }> {
   const source = sources.get(id)
@@ -227,7 +309,8 @@ export async function processPaper(
 
 async function encodeForApi(input: Buffer): Promise<string> {
   const limit = 9 * 1024 * 1024
-  let work = sharp(input)
+  const oriented = await sharp(input, { failOn: 'none' }).rotate().toBuffer()
+  let work = sharp(oriented)
   let scale = 1
   for (let pass = 0; pass < 6; pass += 1) {
     for (const quality of [92, 85, 75, 65]) {
@@ -236,8 +319,10 @@ async function encodeForApi(input: Buffer): Promise<string> {
       if (encoded.length <= limit) return encoded
     }
     scale *= 0.72
-    const meta = await sharp(input).metadata()
-    work = sharp(input).resize({ width: Math.max(320, Math.round((meta.width ?? 1000) * scale)) })
+    const meta = await sharp(oriented).metadata()
+    work = sharp(oriented).resize({
+      width: Math.max(320, Math.round((meta.width ?? 1000) * scale)),
+    })
   }
   throw new Error('图片压缩后仍超过接口限制，请更换图片后重试。')
 }

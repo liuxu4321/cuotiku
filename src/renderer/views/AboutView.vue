@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Download, Images, RefreshCw, Rocket } from '@lucide/vue'
 import { useAppStore } from '@renderer/stores/app'
+import { changelog } from '@renderer/config/changelog'
 
 const store = useAppStore()
 const status = computed(() => store.updateState.status)
@@ -73,6 +74,21 @@ const platformText = computed(() => {
       <p v-if="store.updateState.status === 'error' && store.updateState.error" class="login-error">
         {{ store.updateState.error }}
       </p>
+    </article>
+    <article class="panel about-card changelog-card">
+      <h2 class="changelog-title">版本日志</h2>
+      <div class="changelog-list">
+        <section v-for="entry in changelog" :key="entry.version" class="changelog-entry">
+          <header>
+            <strong>v{{ entry.version }}</strong>
+            <span v-if="entry.version === store.version" class="changelog-current">当前版本</span>
+            <time>{{ entry.date }}</time>
+          </header>
+          <ul>
+            <li v-for="item in entry.items" :key="item">{{ item }}</li>
+          </ul>
+        </section>
+      </div>
     </article>
   </section>
 </template>

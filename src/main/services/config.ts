@@ -1,4 +1,5 @@
 import { safeStorage } from 'electron'
+import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import Store from 'electron-store'
@@ -13,10 +14,12 @@ interface PersistedConfig extends AppConfig {
 interface StoreShape {
   config: PersistedConfig
   windowBounds: WindowBounds
+  clientId: string
 }
 
 const defaultConfig: AppConfig = {
   theme: 'system',
+  uiTheme: 'default',
   releaseChannel: releaseChannelSchema.catch('stable').parse(process.env.UPDATE_CHANNEL),
   layout: {
     paper: 'A4',
@@ -41,6 +44,7 @@ const store = new Store<StoreShape>({
   defaults: {
     config: { ...defaultConfig } as unknown as PersistedConfig,
     windowBounds: defaultWindowBounds,
+    clientId: '',
   },
 })
 
@@ -104,6 +108,14 @@ export function clearAuthTokens(): void {
     encryptedAuthToken: undefined,
     encryptedRefreshToken: undefined,
   })
+}
+
+export function getOrCreateClientId(): string {
+  const existing = store.get('clientId')
+  if (existing) return existing
+  const id = randomUUID()
+  store.set('clientId', id)
+  return id
 }
 
 export function getSavedWindowBounds(): WindowBounds {

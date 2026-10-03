@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   BookMarked,
-  BookOpen,
-  Calculator,
   Crop,
   Eraser,
   FileCog,
   Hand,
   ImagePlus,
-  Languages,
   Maximize,
   Minus,
   MousePointer2,
@@ -28,6 +24,7 @@ import {
 } from '@lucide/vue'
 import PageHeader from '@renderer/components/PageHeader.vue'
 import AppDialog from '@renderer/components/AppDialog.vue'
+import AppLoading from '@renderer/components/AppLoading.vue'
 import LoginDialog from '@renderer/components/LoginDialog.vue'
 import PlanetDialog from '@renderer/components/PlanetDialog.vue'
 import ScannerDialog from '@renderer/components/ScannerDialog.vue'
@@ -36,21 +33,23 @@ import ImageCanvas from '@renderer/components/editor/ImageCanvas.vue'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
+import { subjectsForGrade } from '@renderer/config/subjects'
 import { THERMAL_SIZES } from '@shared/types'
-import { templateById } from '@renderer/templates'
+import { svgToDataUrl, templateById, templates, type TemplateDefinition } from '@renderer/templates'
 import type { ErrorType, SplitQuestion, Subject, Term } from '@shared/types'
 
 const app = useAppStore()
 const auth = useAuthStore()
 const store = useWorkspaceStore()
-const router = useRouter()
 const mode = ref<'select' | 'pan'>('select')
+const layoutPopover = ref(false)
 const canvas = ref<InstanceType<typeof ImageCanvas> | null>(null)
 let refreshTimer = 0
 const errorTypes: ErrorType[] = ['马虎', '不会', '概念不清', '其他']
 const grade = computed(() => app.config.grade)
 const term = computed(() => app.config.term)
 const subject = computed(() => app.config.subject)
+const gradeSubjects = computed(() => subjectsForGrade(grade.value))
 const thermalLabel = computed(
   () => THERMAL_SIZES.find((size) => size.id === app.config.layout.thermalSize)?.label ?? '',
 )
@@ -76,6 +75,9 @@ const headMeta = computed(() => {
   return `${layout.paper} · ${modeText}${suffix}`
 })
 const bookDialog = ref(false)
+const loadingMessage = computed(() =>
+  store.aiTask ? store.aiTaskMessage : store.enhancing ? store.enhanceMessage : store.eraseMessage,
+)
 const bookTypes = ref<ErrorType[]>([])
 const bookAdded = ref(false)
 const loginDialog = ref(false)
@@ -196,13 +198,60 @@ watch(
   },
 )
 watch(
-  () => app.config.layout,
+  [() => app.config.layout, () => app.config.templateId],
   () => {
     void store.refreshPagePreview()
   },
   { deep: true },
 )
+watch(grade, (value) => {
+  const list = subjectsForGrade(value)
+  if (!list.includes(subject.value)) void subjectInput(list[0]!)
+})
 onBeforeUnmount(() => window.clearTimeout(refreshTimer))
+
+function templateThumb(tpl: TemplateDefinition): string {
+  const w = 36
+  const h = 50
+  const margin = 3
+  const gap = 3
+  const rows = tpl.cardsPerPage
+  const cw = w - margin * 2
+  const ch = (h - margin * 2 - gap * (rows - 1)) / rows
+  const cells: string[] = []
+  for (let i = 0; i < rows; i += 1) {
+    cells.push(
+      `<rect x="${margin}" y="${margin + i * (ch + gap)}" width="${cw}" height="${ch}" rx="1" fill="none" stroke="#8a8f98" stroke-width="1"/>`,
+    )
+  }
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+    `<rect width="${w}" height="${h}" fill="#ffffff" stroke="#c8ccd2" stroke-width="1"/>` +
+    cells.join('') +
+    `</svg>`
+  return svgToDataUrl(svg)
+}
+
+const templateRows = computed(() =>
+  (['B5', 'A4'] as const).map((paper) => ({
+    paper,
+    items: templates.filter((tpl) => tpl.paper === paper),
+  })),
+)
+
+async function pickTemplate(tpl: TemplateDefinition): Promise<void> {
+  layoutPopover.value = false
+  if (tpl.id === app.config.templateId && app.config.layout.printMode === 'template') return
+  try {
+    await app.saveConfig({
+      ...app.config,
+      templateId: tpl.id,
+      layout: { ...app.config.layout, paper: tpl.paper, printMode: 'template' },
+    })
+  } catch (error) {
+    store.error = friendlyError(error)
+  }
+}
 
 function undoSelection(): void {
   if (!store.activeImage) return
@@ -228,18 +277,16 @@ function fitView(): void {
 }
 async function gradeInput(event: Event): Promise<void> {
   const value = Number((event.target as HTMLSelectElement).value)
-  if (value === grade.value) return
   try {
-    await app.saveConfig({ ...app.config, grade: value })
+    await app.setGrade(value)
   } catch (error) {
     store.error = friendlyError(error)
   }
 }
 async function termInput(event: Event): Promise<void> {
   const value = Number((event.target as HTMLSelectElement).value) as Term
-  if (value === term.value) return
   try {
-    await app.saveConfig({ ...app.config, term: value })
+    await app.setTerm(value)
   } catch (error) {
     store.error = friendlyError(error)
   }
@@ -278,28 +325,35 @@ async function confirmAddToBook(): Promise<void> {
       class="app-loading-mask"
       role="status"
     >
-      <div class="app-loading-card">
-        <RefreshCw :size="22" class="spinning" />
-        <strong>{{
-          store.aiTask
-            ? store.aiTaskMessage
-            : store.enhancing
-              ? store.enhanceMessage
-              : store.eraseMessage
-        }}</strong>
-        <small>正在处理图片，请稍候，勿关闭应用。</small>
-      </div>
+      <AppLoading
+        class="app-loading-card"
+        :title="loadingMessage"
+        description="正在处理图片，请稍候，勿关闭应用。"
+      />
     </div>
-    <PageHeader title="错题收集">
+    <PageHeader title="集腋成裘">
       <template #title>
-        <h1>错题收集</h1>
+        <h1>集腋成裘</h1>
         <select class="inline-select" :value="grade" aria-label="年级" @change="gradeInput">
-          <option v-for="item in 9" :key="item" :value="item">{{ item }}年级</option>
+          <option v-for="item in 12" :key="item" :value="item">{{ item }}年级</option>
         </select>
         <select class="inline-select" :value="term" aria-label="学期" @change="termInput">
           <option :value="1">上学期</option>
           <option :value="2">下学期</option>
         </select>
+        <span class="segmented header-subjects">
+          <button
+            v-for="item in gradeSubjects"
+            :key="item"
+            type="button"
+            :class="{ active: subject === item }"
+            :data-tip="item"
+            :aria-label="item"
+            @click="subjectInput(item)"
+          >
+            {{ item }}
+          </button>
+        </span>
       </template>
     </PageHeader>
 
@@ -308,39 +362,6 @@ async function confirmAddToBook(): Promise<void> {
       ><button type="button" @click="store.error = null">关闭</button>
     </div>
     <div class="editor-toolbar">
-      <div class="segmented">
-        <button
-          class="icon-action"
-          type="button"
-          :class="{ active: subject === '语文' }"
-          data-tip="语文"
-          aria-label="语文"
-          @click="subjectInput('语文')"
-        >
-          <BookOpen :size="16" />
-        </button>
-        <button
-          class="icon-action"
-          type="button"
-          :class="{ active: subject === '数学' }"
-          data-tip="数学"
-          aria-label="数学"
-          @click="subjectInput('数学')"
-        >
-          <Calculator :size="16" />
-        </button>
-        <button
-          class="icon-action"
-          type="button"
-          :class="{ active: subject === '英语' }"
-          data-tip="英语"
-          aria-label="英语"
-          @click="subjectInput('英语')"
-        >
-          <Languages :size="16" />
-        </button>
-      </div>
-      <span class="toolbar-divider" />
       <button
         class="primary-button icon-action"
         type="button"
@@ -526,15 +547,40 @@ async function confirmAddToBook(): Promise<void> {
         >
           <Printer :size="16" />
         </button>
-        <button
-          class="solid-action icon-action"
-          type="button"
-          data-tip="排版与模板设置"
-          aria-label="排版与模板设置"
-          @click="router.push('/settings?section=layout')"
-        >
-          <SlidersHorizontal :size="16" />
-        </button>
+        <span class="layout-popover-host">
+          <button
+            class="solid-action icon-action"
+            type="button"
+            :data-tip="layoutPopover ? '关闭模板选择' : '排版与模板'"
+            aria-label="排版与模板"
+            @click="layoutPopover = !layoutPopover"
+          >
+            <SlidersHorizontal :size="16" />
+          </button>
+          <div v-if="layoutPopover" class="popover-backdrop" @click="layoutPopover = false" />
+          <div v-if="layoutPopover" class="layout-popover">
+            <div class="layout-popover-rows">
+              <div v-for="row in templateRows" :key="row.paper" class="layout-popover-row">
+                <span class="layout-row-label">{{ row.paper }}</span>
+                <button
+                  v-for="tpl in row.items"
+                  :key="tpl.id"
+                  type="button"
+                  class="layout-thumb"
+                  :class="{
+                    active:
+                      tpl.id === app.config.templateId &&
+                      app.config.layout.printMode === 'template',
+                  }"
+                  :title="`${tpl.name} · 每页 ${tpl.cardsPerPage} 卡`"
+                  @click="pickTemplate(tpl)"
+                >
+                  <img :src="templateThumb(tpl)" :alt="tpl.name" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </span>
       </div>
     </div>
 

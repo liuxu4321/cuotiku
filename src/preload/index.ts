@@ -22,11 +22,14 @@ const api: DesktopAPI = {
   enhanceImage: (id) => ipcRenderer.invoke(ipcChannels.imagesEnhance, id),
   eraseImage: (id) => ipcRenderer.invoke(ipcChannels.imagesErase, id),
   splitQuestions: (id) => ipcRenderer.invoke(ipcChannels.imagesSplit, id),
+  agentExplain: (request) => ipcRenderer.invoke(ipcChannels.agentExplain, request),
+  agentAnalogy: (request) => ipcRenderer.invoke(ipcChannels.agentAnalogy, request),
   paperProcess: (id) => ipcRenderer.invoke(ipcChannels.imagesPaperProcess, id),
   processCrops: (request) => ipcRenderer.invoke(ipcChannels.imagesProcessCrops, request),
   getCaptcha: () => ipcRenderer.invoke(ipcChannels.authCaptcha),
   login: (request) => ipcRenderer.invoke(ipcChannels.authLogin, request),
   logout: () => ipcRenderer.invoke(ipcChannels.authLogout),
+  changePassword: (request) => ipcRenderer.invoke(ipcChannels.authChangePassword, request),
   getAuthSession: () => ipcRenderer.invoke(ipcChannels.authMe),
   onAuthStateChanged: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, session: AuthSession | null): void => {

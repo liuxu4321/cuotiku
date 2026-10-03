@@ -37,6 +37,16 @@ function createFallbackAPI(): DesktopAPI {
       message: null,
     })),
     splitQuestions: vi.fn(async () => ({ width: 1, height: 1, questions: [] })),
+    agentExplain: vi.fn(async () => ({
+      traceId: 't',
+      model: 'm',
+      analysis: '',
+      steps: [],
+      knowledgePoints: [],
+      commonMistakes: [],
+      summary: '',
+    })),
+    agentAnalogy: vi.fn(async () => ({ traceId: 't', model: 'm', items: [] })),
     paperProcess: vi.fn(async (id: string) => ({
       image: { id, name: 'a.png', width: 1, height: 1, previewDataUrl: '' },
       imageKind: 'erased',
@@ -62,6 +72,7 @@ function createFallbackAPI(): DesktopAPI {
       tokenExpiresAt: null,
     })),
     logout: vi.fn(async () => undefined),
+    changePassword: vi.fn(async () => undefined),
     getAuthSession: vi.fn(async () => null),
     onAuthStateChanged: vi.fn(() => () => undefined),
     buildPagePreview: vi.fn(async () => ({ pages: [], columns: 1, scalePercent: 100 })),
@@ -90,6 +101,7 @@ function createFallbackAPI(): DesktopAPI {
     async getConfig() {
       return {
         theme: 'system',
+        uiTheme: 'default',
         releaseChannel: 'stable',
         layout: {
           paper: 'A4',

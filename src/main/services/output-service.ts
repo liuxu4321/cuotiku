@@ -7,6 +7,7 @@ import sharp, { type OverlayOptions } from 'sharp'
 import type { ErrorType, LayoutSettings, PagePreview, PaperSize } from '@shared/types'
 import { THERMAL_SIZES } from '@shared/types'
 import { getResultSet, toDataUrl } from './image-service'
+import { setKeepaliveState } from './keepalive'
 
 const PX_PER_MM = 300 / 25.4
 export const PAPER_SIZES: Record<PaperSize, { widthMm: number; heightMm: number }> = {
@@ -231,7 +232,12 @@ export async function printBuffers(
     `<title>错题打印</title>` +
     `<style>@page{size:${pageSizeCss};margin:0}html,body{margin:0}img{width:${size.widthMm}mm;height:${size.heightMm}mm;display:block;page-break-after:always}img:last-of-type{page-break-after:auto}</style>${images}`
   const pageSize = { width: size.widthMm * 1000, height: size.heightMm * 1000 }
-  return printHtml(parent, html, dir, pageSize, deviceName)
+  setKeepaliveState('printing')
+  try {
+    return await printHtml(parent, html, dir, pageSize, deviceName)
+  } finally {
+    setKeepaliveState('idle')
+  }
 }
 
 const THERMAL_PRINTER_PATTERN =

@@ -1,11 +1,12 @@
 export type PlatformName = 'windows' | 'macos' | 'linux'
 export type RuntimePlatform = string
 export type ThemePreference = 'light' | 'dark' | 'system'
+export type UiTheme = 'default' | 'boy' | 'girl'
 export type ReleaseChannel = 'stable' | 'beta'
 export type AppRoute = '/' | '/book' | '/settings' | '/about'
 export type LayoutMode = 'auto' | 'single' | 'double'
 export type PaperSize = 'A4' | 'B5'
-export type Subject = '语文' | '数学' | '英语'
+export type Subject = '语文' | '数学' | '英语' | '物理' | '化学' | '生物'
 export type ErrorType = '马虎' | '不会' | '概念不清' | '其他'
 export type Term = 1 | 2
 
@@ -209,6 +210,40 @@ export interface SvgPagesRequest {
   svgs: string[]
   paper: PaperSize
 }
+export interface AgentRequest {
+  entryId?: string | undefined
+  imageBase64?: string | undefined
+  subject?: string | undefined
+  grade?: number | undefined
+  term?: number | undefined
+  errorType?: string | undefined
+  count?: number | undefined
+}
+export interface AgentExplainStep {
+  title: string
+  content: string
+}
+export interface AgentExplainResult {
+  traceId: string
+  model: string
+  analysis: string
+  steps: AgentExplainStep[]
+  knowledgePoints: string[]
+  commonMistakes: string[]
+  summary: string
+}
+export interface AgentAnalogyItem {
+  stem: string
+  options: string[]
+  answer: string
+  analysis: string
+  difficulty: number
+}
+export interface AgentAnalogyResult {
+  traceId: string
+  model: string
+  items: AgentAnalogyItem[]
+}
 export interface PrinterInfo {
   name: string
   displayName: string
@@ -226,6 +261,10 @@ export interface LoginRequest {
   captchaCode: string
   clientLabel?: string | undefined
 }
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
+}
 export interface AuthSession {
   phone: string
   memberNo: string | null
@@ -240,6 +279,7 @@ export interface RuntimeConfig {
 }
 export interface AppConfig {
   theme: ThemePreference
+  uiTheme: UiTheme
   releaseChannel: ReleaseChannel
   layout: LayoutSettings
   processing: ImageProcessingSettings
@@ -263,10 +303,13 @@ export interface DesktopAPI {
   processCrops(request: CropRequest): Promise<CropResultSet>
   eraseImage(id: string): Promise<EnhanceResult>
   splitQuestions(id: string): Promise<SplitResult>
+  agentExplain(request: AgentRequest): Promise<AgentExplainResult>
+  agentAnalogy(request: AgentRequest): Promise<AgentAnalogyResult>
   paperProcess(id: string): Promise<PaperProcessResult>
   getCaptcha(): Promise<CaptchaInfo>
   login(request: LoginRequest): Promise<AuthSession>
   logout(): Promise<void>
+  changePassword(request: ChangePasswordRequest): Promise<void>
   getAuthSession(): Promise<AuthSession | null>
   onAuthStateChanged(callback: (session: AuthSession | null) => void): () => void
   buildPagePreview(request: PagePreviewRequest): Promise<PagePreview>

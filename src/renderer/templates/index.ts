@@ -19,7 +19,6 @@ export interface TemplateDefinition {
 interface TemplateOptions {
   cardsPerPage: number
   paper: PaperSize
-  cols?: number
   ruled?: boolean
 }
 
@@ -97,10 +96,10 @@ function cardSvg(
 function buildTemplate(options: TemplateOptions) {
   return (items: TemplateItem[]): string[] => {
     const base = PAGE_SIZES[options.paper]
-    const cols = options.cols ?? 1
-    const rows = Math.ceil(options.cardsPerPage / cols)
-    const width = cols > 1 && rows === 1 ? base.height : base.width
-    const height = cols > 1 && rows === 1 ? base.width : base.height
+    const cols = 1
+    const rows = options.cardsPerPage
+    const width = base.width
+    const height = base.height
     const margin = 142
     const gap = 70
     const cardW = Math.round((width - margin * 2 - gap * (cols - 1)) / cols)
@@ -150,14 +149,6 @@ export const templates: TemplateDefinition[] = [
     buildPages: buildTemplate({ cardsPerPage: 2, paper: 'A4' }),
   },
   {
-    id: 'cuotiben-2up-ruled',
-    name: 'A4 双卡横线',
-    description: 'A4 竖版两卡，正解&解析区带书写横线。',
-    paper: 'A4',
-    cardsPerPage: 2,
-    buildPages: buildTemplate({ cardsPerPage: 2, paper: 'A4', ruled: true }),
-  },
-  {
     id: 'cuotiben-3up',
     name: 'A4 三卡',
     description: 'A4 竖版三卡，省纸紧凑版式。',
@@ -172,14 +163,6 @@ export const templates: TemplateDefinition[] = [
     paper: 'A4',
     cardsPerPage: 4,
     buildPages: buildTemplate({ cardsPerPage: 4, paper: 'A4' }),
-  },
-  {
-    id: 'cuotiben-2up-landscape',
-    name: 'A4 横版双卡',
-    description: 'A4 横版左右两卡，适合宽幅题目截图。',
-    paper: 'A4',
-    cardsPerPage: 2,
-    buildPages: buildTemplate({ cardsPerPage: 2, paper: 'A4', cols: 2 }),
   },
   {
     id: 'cuotiben-b5-1up',
@@ -198,14 +181,6 @@ export const templates: TemplateDefinition[] = [
     buildPages: buildTemplate({ cardsPerPage: 2, paper: 'B5' }),
   },
   {
-    id: 'cuotiben-b5-2up-ruled',
-    name: 'B5 双卡横线',
-    description: 'B5 竖版两卡，正解&解析区带书写横线。',
-    paper: 'B5',
-    cardsPerPage: 2,
-    buildPages: buildTemplate({ cardsPerPage: 2, paper: 'B5', ruled: true }),
-  },
-  {
     id: 'cuotiben-b5-3up',
     name: 'B5 三卡',
     description: 'B5 竖版三卡，省纸紧凑版式。',
@@ -213,10 +188,127 @@ export const templates: TemplateDefinition[] = [
     cardsPerPage: 3,
     buildPages: buildTemplate({ cardsPerPage: 3, paper: 'B5' }),
   },
+  {
+    id: 'cuotiben-b5-4up',
+    name: 'B5 四卡',
+    description: 'B5 竖版四卡，适合小尺寸错题速览。',
+    paper: 'B5',
+    cardsPerPage: 4,
+    buildPages: buildTemplate({ cardsPerPage: 4, paper: 'B5' }),
+  },
 ]
 
 export function templateById(id: string): TemplateDefinition {
   return templates.find((template) => template.id === id) ?? templates[1]!
+}
+
+export interface AnalogyQuestion {
+  stem: string
+  options: string[]
+  answer: string
+  analysis: string
+  difficulty: number
+}
+
+interface AnalogyLine {
+  text: string
+  bold?: boolean
+}
+
+function wrapAnalogyText(text: string, chars: number): string[] {
+  const lines: string[] = []
+  for (const paragraph of String(text ?? '').split('\n')) {
+    let rest = paragraph
+    while (rest.length > chars) {
+      lines.push(rest.slice(0, chars))
+      rest = rest.slice(chars)
+    }
+    lines.push(rest)
+  }
+  return lines
+}
+
+function analogyBlockSvg(
+  q: AnalogyQuestion,
+  index: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): string {
+  const pad = 44
+  const headH = 110
+  const bodyFs = 40
+  const lh = 62
+  const chars = Math.max(10, Math.floor((w - pad * 2) / bodyFs))
+  const difficulty = Math.min(3, Math.max(1, Math.round(q.difficulty || 1)))
+  const stars = '★'.repeat(difficulty) + '☆'.repeat(3 - difficulty)
+  const parts: string[] = [
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="none" stroke="#8a8f98" stroke-width="2"/>`,
+    `<text x="${x + pad}" y="${y + 72}" font-size="46" font-weight="700" font-family="sans-serif" fill="#111">同类练习${index + 1}</text>`,
+    `<text x="${x + w - pad}" y="${y + 72}" font-size="40" text-anchor="end" font-family="sans-serif" fill="#666">难度 ${stars}</text>`,
+    `<line x1="${x + pad}" y1="${y + headH}" x2="${x + w - pad}" y2="${y + headH}" stroke="#c8ccd2" stroke-width="2"/>`,
+  ]
+  const lines: AnalogyLine[] = []
+  wrapAnalogyText(q.stem, chars).forEach((text) => lines.push({ text }))
+  ;(q.options ?? []).forEach((option, i) => {
+    wrapAnalogyText(`${String.fromCharCode(65 + i)}. ${option}`, chars).forEach((text) =>
+      lines.push({ text }),
+    )
+  })
+  if (q.answer) {
+    lines.push({ text: '' })
+    wrapAnalogyText(`答案：${q.answer}`, chars).forEach((text, i) =>
+      lines.push({ text, bold: i === 0 }),
+    )
+  }
+  if (q.analysis) {
+    lines.push({ text: '' })
+    wrapAnalogyText(`解析：${q.analysis}`, chars).forEach((text, i) =>
+      lines.push({ text, bold: i === 0 }),
+    )
+  }
+  let cy = y + headH + 24 + bodyFs
+  const maxCy = y + h - pad
+  for (const line of lines) {
+    if (cy > maxCy) break
+    if (line.text) {
+      parts.push(
+        `<text x="${x + pad}" y="${cy}" font-size="${bodyFs}"${line.bold ? ' font-weight="700"' : ''} font-family="sans-serif" fill="#111">${escapeXml(line.text)}</text>`,
+      )
+    }
+    cy += lh
+  }
+  return parts.join('')
+}
+
+export function buildAnalogyPages(questions: AnalogyQuestion[]): string[] {
+  const base = PAGE_SIZES.B5
+  const margin = 110
+  const gap = 56
+  const perPage = 2
+  const blockW = base.width - margin * 2
+  const blockH = Math.round((base.height - margin * 2 - gap * (perPage - 1)) / perPage)
+  const pages: string[] = []
+  const total = Math.max(questions.length, 1)
+  for (let page = 0; page < Math.ceil(total / perPage); page += 1) {
+    const blocks: string[] = []
+    for (let slot = 0; slot < perPage; slot += 1) {
+      const index = page * perPage + slot
+      const question = questions[index]
+      if (!question) continue
+      blocks.push(
+        analogyBlockSvg(question, index, margin, margin + slot * (blockH + gap), blockW, blockH),
+      )
+    }
+    pages.push(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${base.width}" height="${base.height}" viewBox="0 0 ${base.width} ${base.height}">` +
+        `<rect width="${base.width}" height="${base.height}" fill="#ffffff"/>` +
+        blocks.join('') +
+        `</svg>`,
+    )
+  }
+  return pages
 }
 
 export function svgToDataUrl(svg: string): string {

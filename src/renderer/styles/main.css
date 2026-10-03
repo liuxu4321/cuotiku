@@ -27,7 +27,7 @@
   padding: 14px 10px;
 }
 .app-shell .sidebar {
-  background: #192126;
+  background: var(--sidebar);
   isolation: isolate;
   position: relative;
 }
@@ -85,7 +85,7 @@
   width: 36px;
 }
 .settings-entry:hover {
-  background: #26333a;
+  background: var(--sidebar-hover);
 }
 .sidebar-collapsed .app-identity span {
   display: none;
@@ -112,7 +112,7 @@
   white-space: nowrap;
 }
 .auth-entry:hover {
-  background: #26333a;
+  background: var(--sidebar-hover);
 }
 .auth-popover {
   background: #202b31;
@@ -159,7 +159,7 @@
   min-height: 0;
 }
 .primary-button {
-  background: #1769e0;
+  background: var(--primary);
 }
 .workspace-alert {
   align-items: center;
@@ -199,17 +199,19 @@
 }
 .editor-toolbar button:hover,
 .editor-toolbar button.active {
-  background: color-mix(in srgb, #1769e0 12%, Canvas);
-  color: #1769e0;
+  background: color-mix(in srgb, var(--primary) 12%, Canvas);
+  color: var(--primary);
 }
 .editor-toolbar .segmented {
   display: flex;
   gap: 4px;
 }
-.editor-toolbar [data-tip] {
+.editor-toolbar [data-tip],
+.book-toolbar [data-tip] {
   position: relative;
 }
-.editor-toolbar [data-tip]:hover::after {
+.editor-toolbar [data-tip]:hover::after,
+.book-toolbar [data-tip]:hover::after {
   background: #1d252c;
   border-radius: 6px;
   bottom: calc(100% + 6px);
@@ -224,6 +226,15 @@
   white-space: nowrap;
   z-index: 50;
 }
+.editor-toolbar .toolbar-actions [data-tip]:hover::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.book-toolbar [data-tip]:hover::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
 .toolbar-divider {
   background: color-mix(in srgb, CanvasText 14%, transparent);
   height: 24px;
@@ -235,19 +246,19 @@
   width: 34px;
 }
 .editor-toolbar .primary-button {
-  background: #1769e0;
+  background: var(--primary);
   color: #fff;
 }
 .editor-toolbar .primary-button:hover {
-  background: #125ac2;
+  background: var(--primary-strong);
   color: #fff;
 }
 .editor-toolbar .solid-action {
-  background: #256f73;
+  background: var(--accent);
   color: #fff;
 }
 .editor-toolbar .solid-action:hover {
-  background: #1e5b5f;
+  background: var(--accent-strong);
   color: #fff;
 }
 .toolbar-actions {
@@ -314,7 +325,7 @@
 }
 .source-item:hover,
 .source-item.active {
-  background: color-mix(in srgb, #1769e0 11%, Canvas);
+  background: color-mix(in srgb, var(--primary) 11%, Canvas);
 }
 .source-item img {
   border-radius: 4px;
@@ -378,6 +389,27 @@
 .paper-head-actions {
   display: flex;
   gap: 6px;
+}
+.page-title-row .header-subjects {
+  gap: 4px;
+  margin-left: 8px;
+}
+.page-title-row .inline-select {
+  margin-bottom: 0;
+}
+.workspace-page .page-title-row {
+  align-items: center;
+}
+.page-title-row .header-subjects button {
+  background: color-mix(in srgb, CanvasText 10%, transparent);
+  color: CanvasText;
+  font-size: 13px;
+  min-height: 30px;
+  padding: 0 12px;
+}
+.page-title-row .header-subjects button.active {
+  background: var(--accent);
+  color: #fff;
 }
 .paper-head-meta {
   color: color-mix(in srgb, CanvasText 55%, transparent);
@@ -445,7 +477,7 @@
   align-items: center;
   align-self: flex-start;
   background: transparent;
-  color: #1769e0;
+  color: var(--primary);
   display: inline-flex;
   gap: 7px;
   padding: 0;
@@ -493,7 +525,7 @@ body {
 button {
   border: 0;
   border-radius: 6px;
-  background: #256f73;
+  background: var(--accent);
   color: white;
   cursor: pointer;
   font: inherit;
@@ -528,7 +560,7 @@ button:disabled {
 }
 
 .sidebar {
-  background: #192126;
+  background: var(--sidebar);
   color: #f6f8f9;
   display: flex;
   flex-direction: column;
@@ -589,7 +621,7 @@ button:disabled {
 
 .icon-button:hover,
 .icon-button:focus-visible {
-  background: #26333a;
+  background: var(--sidebar-hover);
   color: #ffffff;
 }
 
@@ -658,7 +690,7 @@ nav {
 .nav-link:hover,
 .nav-link:focus-visible,
 .nav-link.router-link-active {
-  background: #26333a;
+  background: var(--sidebar-hover);
   color: #ffffff;
 }
 
@@ -742,7 +774,7 @@ nav {
 .user-summary:hover,
 .user-summary:focus-visible,
 .user-summary[aria-expanded='true'] {
-  background: #26333a;
+  background: var(--sidebar-hover);
   color: #ffffff;
 }
 
@@ -862,6 +894,7 @@ nav {
   gap: 14px;
   height: 100%;
   min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 14px 24px 24px;
   position: relative;
@@ -975,7 +1008,7 @@ nav {
 }
 
 .right-panel-tabs button.active {
-  border-bottom-color: #256f73;
+  border-bottom-color: var(--accent);
   color: CanvasText;
   font-weight: 600;
 }
@@ -1034,7 +1067,7 @@ nav {
 }
 
 .panel-activity-list i {
-  background: #256f73;
+  background: var(--accent);
   border-radius: 50%;
   height: 7px;
   margin-top: 4px;
@@ -1094,7 +1127,7 @@ nav {
 }
 
 .agent-message.user p {
-  background: #256f73;
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -1368,7 +1401,7 @@ nav {
 }
 .about-card {
   max-width: 100%;
-  width: fit-content;
+  width: 100%;
 }
 .about-hero {
   align-items: center;
@@ -1378,7 +1411,7 @@ nav {
 }
 .about-logo {
   align-items: center;
-  background: #256f73;
+  background: var(--accent);
   border-radius: 12px;
   color: #fff;
   display: inline-flex;
@@ -1434,18 +1467,10 @@ nav {
   z-index: 100;
 }
 .app-loading-card {
-  align-items: center;
-  background: Canvas;
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
   box-shadow: 0 24px 64px rgb(0 0 0 / 30%);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 24px 32px;
-}
-.app-loading-card small {
-  color: color-mix(in srgb, CanvasText 55%, transparent);
-  font-size: 12px;
+  overflow: hidden;
+  width: min(420px, calc(100vw - 48px));
 }
 .home-page {
   display: flex;
@@ -1492,7 +1517,7 @@ nav {
   padding: 0 12px;
 }
 .ability-tabs button.active {
-  background: #1769e0;
+  background: var(--primary);
   color: #fff;
 }
 .ability-overall {
@@ -1531,12 +1556,12 @@ nav {
   stroke: color-mix(in srgb, CanvasText 14%, transparent);
 }
 .ability-radar .radar-area {
-  fill: rgb(23 105 224 / 25%);
-  stroke: #1769e0;
+  fill: color-mix(in srgb, var(--primary) 25%, transparent);
+  stroke: var(--primary);
   stroke-width: 2;
 }
 .ability-radar .radar-dot {
-  fill: #1769e0;
+  fill: var(--primary);
 }
 .ability-radar .radar-label {
   fill: CanvasText;
@@ -1568,11 +1593,11 @@ nav {
   position: absolute;
 }
 .split-box.on {
-  background: rgb(23 105 224 / 18%);
-  border: 2px solid #1769e0;
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  border: 2px solid var(--primary);
 }
 .split-box span {
-  background: #1769e0;
+  background: var(--primary);
   border-radius: 0 0 4px 0;
   color: #fff;
   font-size: 10px;
@@ -1596,7 +1621,7 @@ nav {
   padding: 0 10px;
 }
 .split-chip.on {
-  background: #1769e0;
+  background: var(--primary);
   color: #fff;
 }
 .template-picker {
@@ -1615,7 +1640,7 @@ nav {
   text-align: left;
 }
 .template-card.active {
-  border-color: #1769e0;
+  border-color: var(--primary);
 }
 .template-card img {
   background: white;
@@ -1710,7 +1735,7 @@ nav {
 }
 .update-notice {
   background: Canvas;
-  border: 1px solid color-mix(in srgb, #1769e0 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
   border-radius: 10px;
   bottom: 20px;
   box-shadow: 0 16px 40px rgb(0 0 0 / 22%);
@@ -1729,7 +1754,7 @@ nav {
   justify-content: space-between;
 }
 .update-notice-head strong {
-  color: #1769e0;
+  color: var(--primary);
   font-size: 14px;
 }
 .update-notice-close {
@@ -1763,7 +1788,7 @@ nav {
   margin-top: 14px;
 }
 .update-found-text {
-  color: #1769e0;
+  color: var(--primary);
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 0;
@@ -1854,8 +1879,8 @@ nav {
   width: 100%;
 }
 .login-promo {
-  background: color-mix(in srgb, #256f73 8%, Canvas);
-  border: 1px solid color-mix(in srgb, #256f73 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, Canvas);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -1929,8 +1954,8 @@ nav {
   margin-bottom: 0;
 }
 .login-benefits {
-  background: color-mix(in srgb, #256f73 8%, Canvas);
-  border: 1px solid color-mix(in srgb, #256f73 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, Canvas);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -1952,7 +1977,7 @@ nav {
   gap: 8px;
 }
 .login-benefits li svg {
-  color: #256f73;
+  color: var(--accent);
   flex: 0 0 auto;
   margin-top: 1px;
 }
@@ -2047,7 +2072,7 @@ h2 {
 
 .panel,
 .state-card {
-  background: color-mix(in srgb, Canvas 92%, #256f73 8%);
+  background: color-mix(in srgb, Canvas 92%, var(--accent) 8%);
   border: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
   border-radius: 8px;
   padding: 16px;
@@ -2120,7 +2145,7 @@ h2 {
 }
 
 .data-table tbody tr:hover {
-  background: color-mix(in srgb, #256f73 6%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .data-table td strong,
@@ -2149,7 +2174,7 @@ h2 {
 .table-name-button:hover,
 .table-name-button:focus-visible {
   background: transparent;
-  color: #256f73;
+  color: var(--accent);
 }
 
 .table-actions-heading {
@@ -2333,7 +2358,7 @@ h2 {
 
 .chart-area-line {
   fill: none;
-  stroke: #256f73;
+  stroke: var(--accent);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 4;
@@ -2350,7 +2375,7 @@ h2 {
 .donut-chart {
   align-items: center;
   aspect-ratio: 1;
-  background: conic-gradient(#256f73 0 42%, #d9923b 42% 73%, #6674a8 73% 91%, #8a989f 91%);
+  background: conic-gradient(var(--accent) 0 42%, #d9923b 42% 73%, #6674a8 73% 91%, #8a989f 91%);
   border-radius: 50%;
   display: flex;
   justify-content: center;
@@ -2448,7 +2473,7 @@ h2 {
 
 .workspace-mark {
   align-items: center;
-  background: #256f73;
+  background: var(--accent);
   border-radius: 6px;
   color: #ffffff;
   display: inline-flex;
@@ -2566,7 +2591,7 @@ h2 {
 }
 
 .activity-timeline i {
-  background: #256f73;
+  background: var(--accent);
   border-radius: 50%;
   height: 8px;
   margin-top: 5px;
@@ -2619,7 +2644,7 @@ h2 {
   align-items: center;
   background: rgb(37 111 115 / 12%);
   border-radius: 6px;
-  color: #256f73;
+  color: var(--accent);
   display: inline-flex;
   height: 34px;
   justify-content: center;
@@ -2637,9 +2662,9 @@ h2 {
 
 .dialog-callout {
   align-items: flex-start;
-  background: color-mix(in srgb, #256f73 9%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
   border-radius: 6px;
-  color: #256f73;
+  color: var(--accent);
   display: flex;
   gap: 10px;
   padding: 12px;
@@ -2731,7 +2756,7 @@ dd {
 }
 
 .segmented button.active {
-  background: #256f73;
+  background: var(--accent);
   color: white;
 }
 
@@ -3139,7 +3164,7 @@ progress {
 }
 
 .switch-input:checked {
-  background: #256f73;
+  background: var(--accent);
 }
 
 .switch-input:checked::after {
@@ -3357,4 +3382,238 @@ button,
 input,
 select {
   letter-spacing: 0.01em;
+}
+
+/* 主题变量：默认 / 男生 / 女生 */
+:root {
+  --accent: #256f73;
+  --accent-strong: #1e5b5f;
+  --primary: #1769e0;
+  --primary-strong: #125ac2;
+  --sidebar: #192126;
+  --sidebar-hover: #26333a;
+  --radius-btn: 6px;
+  --radius-panel: 8px;
+}
+:root[data-uitheme='boy'] {
+  --accent: #2f6fde;
+  --accent-strong: #2456b3;
+  --primary: #0ea5e9;
+  --primary-strong: #0b84bb;
+  --sidebar: #101a26;
+  --sidebar-hover: #1c2a3a;
+  --radius-btn: 4px;
+  --radius-panel: 6px;
+}
+:root[data-uitheme='girl'] {
+  --accent: #db5f9e;
+  --accent-strong: #b84a82;
+  --primary: #e0559a;
+  --primary-strong: #c24383;
+  --sidebar: #2a1a24;
+  --sidebar-hover: #3a2632;
+  --radius-btn: 999px;
+  --radius-panel: 14px;
+}
+button {
+  border-radius: var(--radius-btn);
+}
+.book-row,
+.template-card,
+.about-card,
+.auth-popover,
+.app-loading-card {
+  border-radius: var(--radius-panel);
+}
+[data-uitheme='boy'] .app-shell .sidebar::before,
+[data-uitheme='girl'] .app-shell .sidebar::before {
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+[data-uitheme='boy'] .app-shell .sidebar::before {
+  background: linear-gradient(180deg, rgb(14 165 233 / 14%), transparent 45%);
+}
+[data-uitheme='girl'] .app-shell .sidebar::before {
+  background: linear-gradient(180deg, rgb(224 85 154 / 16%), transparent 45%);
+}
+
+/* 千锤百炼 */
+.practice-toolbar {
+  flex-wrap: wrap;
+}
+.practice-row {
+  cursor: pointer;
+}
+.practice-row.active {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.practice-radio {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  position: relative;
+}
+.practice-row.active .practice-radio::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.lecture-box {
+  margin: 0;
+  padding: 14px 16px;
+  background: Canvas;
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: var(--radius-panel);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+.account-actions {
+  display: flex;
+  gap: 8px;
+}
+.password-form {
+  display: grid;
+  gap: 12px;
+}
+.password-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.password-form input {
+  background: Canvas;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  border-radius: var(--radius-btn);
+  color: CanvasText;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+.login-notice {
+  color: #2e7d32;
+  font-size: 13px;
+}
+
+/* 版本日志 */
+.changelog-card {
+  margin-top: 12px;
+}
+.changelog-title {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.changelog-list {
+  display: grid;
+  gap: 14px;
+}
+.changelog-entry header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.changelog-entry header strong {
+  font-size: 13px;
+}
+.changelog-entry header time {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+  font-size: 12px;
+  margin-left: auto;
+}
+.changelog-current {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 1px 8px;
+}
+.changelog-entry ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.changelog-entry li {
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+
+/* 排版模板弹层 */
+.layout-popover-host {
+  display: inline-flex;
+  position: relative;
+}
+.popover-backdrop {
+  inset: 0;
+  position: fixed;
+  z-index: 60;
+}
+.layout-popover {
+  background: color-mix(in srgb, Canvas 96%, CanvasText 4%);
+  border: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 25%);
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 236px;
+  z-index: 61;
+}
+.layout-popover header {
+  color: color-mix(in srgb, CanvasText 65%, transparent);
+  font-size: 12px;
+}
+.layout-popover-rows {
+  display: grid;
+  gap: 8px;
+}
+.layout-popover-row {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 24px repeat(4, 1fr);
+}
+.layout-row-label {
+  color: color-mix(in srgb, CanvasText 60%, transparent);
+  font-size: 11px;
+  text-align: center;
+}
+.layout-thumb {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: CanvasText;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 6px 4px;
+}
+.layout-thumb img {
+  border-radius: 3px;
+  height: auto;
+  width: 100%;
+}
+.layout-thumb span {
+  font-size: 11px;
+  line-height: 1.2;
+}
+.layout-thumb:hover {
+  background: color-mix(in srgb, CanvasText 8%, transparent);
+}
+.layout-thumb.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
 }

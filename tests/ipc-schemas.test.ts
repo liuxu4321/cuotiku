@@ -17,6 +17,7 @@ describe('IPC contracts and schemas', () => {
   it('applies safe config defaults', () => {
     expect(appConfigSchema.parse({})).toEqual({
       theme: 'system',
+      uiTheme: 'default',
       releaseChannel: 'stable',
       layout: {
         paper: 'A4',

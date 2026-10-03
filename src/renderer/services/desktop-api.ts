@@ -3,6 +3,7 @@ import { createDesktopAPI } from '@shared/desktop-api'
 
 let previewConfig: AppConfig = {
   theme: 'system',
+  uiTheme: 'default',
   releaseChannel: 'stable',
   layout: {
     paper: 'A4',
@@ -73,10 +74,13 @@ const previewAPI: DesktopAPI = {
     return { image, enhanced: false, message: null }
   },
   splitQuestions: desktopOnly,
+  agentExplain: desktopOnly,
+  agentAnalogy: desktopOnly,
   paperProcess: desktopOnly,
   getCaptcha: desktopOnly,
   login: desktopOnly,
   logout: desktopOnly,
+  changePassword: desktopOnly,
   getAuthSession: async () => null,
   onAuthStateChanged: () => () => undefined,
   buildPagePreview: desktopOnly,

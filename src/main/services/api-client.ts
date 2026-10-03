@@ -1,10 +1,14 @@
 import type {
   AbilityRequest,
   AbilityResponse,
+  AgentAnalogyResult,
+  AgentExplainResult,
+  AgentRequest,
   AuthSession,
   BookEntryDto,
   BookRandomResult,
   CaptchaInfo,
+  ChangePasswordRequest,
   LoginRequest,
   SplitQuestion,
   SplitResult,
@@ -160,6 +164,11 @@ export async function logout(): Promise<void> {
   }
 }
 
+export async function changePassword(body: ChangePasswordRequest): Promise<void> {
+  await request<null>('/api/auth/password', { method: 'POST', body, auth: true })
+  notifyTokenCleared('密码已修改，请使用新密码重新登录。')
+}
+
 export async function me(): Promise<AuthSession | null> {
   if (!getAuthToken() && !(await tryRefresh())) return null
   const data = await request<AuthSessionDto>('/api/auth/me', { auth: true })
@@ -226,6 +235,24 @@ export function splitQuestions(imageBase64: string): Promise<SplitResult> {
     body: { imageBase64 },
     auth: true,
     timeoutMs: 120_000,
+  })
+}
+
+export function agentExplain(body: AgentRequest): Promise<AgentExplainResult> {
+  return request<AgentExplainResult>('/api/agent/explain', {
+    method: 'POST',
+    body,
+    auth: true,
+    timeoutMs: 150_000,
+  })
+}
+
+export function agentAnalogy(body: AgentRequest): Promise<AgentAnalogyResult> {
+  return request<AgentAnalogyResult>('/api/agent/analogy', {
+    method: 'POST',
+    body,
+    auth: true,
+    timeoutMs: 150_000,
   })
 }
 
