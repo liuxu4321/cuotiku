@@ -6,7 +6,10 @@ import type {
   AgentRequest,
   AuthSession,
   BookEntryDto,
+  BookPracticeRecord,
+  BookPracticeRecordRequest,
   BookRandomResult,
+  BookUpdateRequest,
   CaptchaInfo,
   ChangePasswordRequest,
   LoginRequest,
@@ -345,6 +348,25 @@ export async function bookDelete(id: string): Promise<void> {
     if (error instanceof ApiError && error.code === 404) return
     throw error
   }
+}
+
+export function bookUpdate(id: string, body: BookUpdateRequest): Promise<unknown> {
+  return request<unknown>(`/api/book/entries/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body,
+    auth: true,
+  })
+}
+
+export function bookAddPractice(
+  id: string,
+  body: BookPracticeRecordRequest,
+): Promise<BookPracticeRecord> {
+  return request<BookPracticeRecord>(`/api/book/entries/${encodeURIComponent(id)}/practices`, {
+    method: 'POST',
+    body,
+    auth: true,
+  })
 }
 
 async function requestBinary(

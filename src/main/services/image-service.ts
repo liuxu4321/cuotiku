@@ -32,7 +32,7 @@ const registered = new Map<string, ImportedImage>()
 const resultSets = new Map<string, StoredCrop[]>()
 const MAX_ENHANCE_BYTES = 7 * 1024 * 1024
 const IMPORT_MAX_EDGE = 2500
-const IMPORT_MAX_BYTES = 1024 * 1024
+const IMPORT_MAX_BYTES = 512 * 1024
 
 function importCacheDir(): string {
   return join(app.getPath('userData'), 'import-cache')
@@ -168,13 +168,13 @@ function enhanceFallbackMessage(error: unknown): string {
   return '图像优化失败，已保留原图。'
 }
 
-export async function registerImageDataUrl(dataUrl: string): Promise<ImportedImage> {
+export async function registerImageDataUrl(dataUrl: string, name?: string): Promise<ImportedImage> {
   const base64 = dataUrl.includes(',') ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl
   const buffer = Buffer.from(base64, 'base64')
   if (!buffer.length) throw new Error('高拍仪图像数据无效。')
   const dir = importCacheDir()
   await mkdir(dir, { recursive: true })
-  const file = join(dir, `高拍仪_${Date.now()}.jpg`)
+  const file = join(dir, `${name ?? `高拍仪_${Date.now()}`}.jpg`)
   await writeFile(file, buffer)
   return registerImage(file)
 }

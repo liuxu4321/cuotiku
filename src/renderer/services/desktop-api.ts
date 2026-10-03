@@ -49,12 +49,13 @@ const previewAPI: DesktopAPI = {
     window.open(url, '_blank', 'noopener,noreferrer')
   },
   selectImages: selectBrowserImages,
-  registerScannerImage: async (dataUrl) => {
+  selectPdf: async () => null,
+  registerScannerImage: async (dataUrl, name) => {
     const blob = await (await fetch(dataUrl)).blob()
     const bitmap = await createImageBitmap(blob)
     const image: ImportedImage = {
       id: crypto.randomUUID(),
-      name: `高拍仪_${Date.now()}.jpg`,
+      name: name ? `${name}.jpg` : `高拍仪_${Date.now()}.jpg`,
       width: bitmap.width,
       height: bitmap.height,
       previewDataUrl: dataUrl,
@@ -91,6 +92,8 @@ const previewAPI: DesktopAPI = {
   listBookEntries: desktopOnly,
   addBookEntries: desktopOnly,
   removeBookEntry: desktopOnly,
+  updateBookEntry: desktopOnly,
+  addBookPractice: desktopOnly,
   buildBookPreview: desktopOnly,
   printBook: desktopOnly,
   bumpBookPractice: desktopOnly,

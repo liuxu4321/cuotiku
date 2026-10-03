@@ -3440,7 +3440,7 @@ button {
   background: linear-gradient(180deg, rgb(224 85 154 / 16%), transparent 45%);
 }
 
-/* 千锤百炼 */
+/* 温故知新（练习页） */
 .practice-toolbar {
   flex-wrap: wrap;
 }
@@ -3616,4 +3616,141 @@ button {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--accent);
+}
+
+/* 前车之鉴 */
+.history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.history-page .book-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+.history-row {
+  cursor: pointer;
+}
+.history-detail {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 180px;
+}
+.history-detail img {
+  background: #fff;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 6px;
+  max-height: 62vh;
+  object-fit: contain;
+  width: 100%;
+}
+.history-detail-meta {
+  display: grid;
+  font-size: 13px;
+  gap: 8px 10px;
+  grid-template-columns: auto 1fr;
+  margin: 0;
+}
+.history-detail-meta dt {
+  color: color-mix(in srgb, CanvasText 55%, transparent);
+}
+.history-detail-meta dd {
+  margin: 0;
+}
+.history-row-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.history-line {
+  flex-basis: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.history-select-all {
+  align-items: center;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 5px;
+}
+.history-edit-form {
+  display: grid;
+  gap: 12px;
+}
+.history-edit-form label {
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+}
+.history-edit-form textarea {
+  background: Canvas;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  border-radius: var(--radius-btn);
+  color: CanvasText;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.history-edit-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+.history-edit-row label {
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+}
+.practice-dialog {
+  display: grid;
+  gap: 12px;
+}
+.practice-dialog-image {
+  background: #fff;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 6px;
+  max-height: 38vh;
+  object-fit: contain;
+  width: 100%;
+}
+.practice-review {
+  display: grid;
+  gap: 10px;
+}
+.practice-review strong {
+  font-size: 13px;
+}
+.practice-review pre {
+  background: color-mix(in srgb, CanvasText 6%, transparent);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 6px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.row-text-action {
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  min-height: auto;
+  padding: 3px 8px;
+}
+.row-text-action:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.row-text-action.danger {
+  color: #c62828;
+}
+.row-text-action.danger:hover {
+  background: rgb(198 40 40 / 12%);
 }

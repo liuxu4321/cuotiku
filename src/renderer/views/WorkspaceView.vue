@@ -5,6 +5,7 @@ import {
   Crop,
   Eraser,
   FileCog,
+  FileText,
   Hand,
   ImagePlus,
   Maximize,
@@ -31,6 +32,8 @@ import ScannerDialog from '@renderer/components/ScannerDialog.vue'
 import SplitDialog from '@renderer/components/SplitDialog.vue'
 import ImageCanvas from '@renderer/components/editor/ImageCanvas.vue'
 import { friendlyError, useAppStore } from '@renderer/stores/app'
+import { desktopAPI } from '@renderer/services/desktop-api'
+import { PDF_PAGE_LIMIT, pdfErrorMessage, renderPdfPages } from '@renderer/services/pdf-import'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useWorkspaceStore } from '@renderer/stores/workspace'
 import { subjectsForGrade } from '@renderer/config/subjects'
@@ -75,8 +78,16 @@ const headMeta = computed(() => {
   return `${layout.paper} · ${modeText}${suffix}`
 })
 const bookDialog = ref(false)
+const pdfBusy = ref(false)
+const pdfMessage = ref('')
 const loadingMessage = computed(() =>
-  store.aiTask ? store.aiTaskMessage : store.enhancing ? store.enhanceMessage : store.eraseMessage,
+  pdfBusy.value
+    ? pdfMessage.value
+    : store.aiTask
+      ? store.aiTaskMessage
+      : store.enhancing
+        ? store.enhanceMessage
+        : store.eraseMessage,
 )
 const bookTypes = ref<ErrorType[]>([])
 const bookAdded = ref(false)
@@ -269,6 +280,30 @@ function zoomOut(): void {
 function scannerImport(): void {
   scannerDialog.value = true
 }
+async function importPdf(): Promise<void> {
+  if (pdfBusy.value) return
+  pdfBusy.value = true
+  pdfMessage.value = '正在读取 PDF…'
+  store.error = null
+  try {
+    const file = await desktopAPI.selectPdf()
+    if (!file) return
+    const { dataUrls, truncated } = await renderPdfPages(file.bytes, (index, total) => {
+      pdfMessage.value = `正在解析 PDF ${index}/${total} 页…`
+    })
+    for (const [index, dataUrl] of dataUrls.entries()) {
+      await store.addScannerImage(dataUrl, `p${index + 1}`)
+    }
+    if (truncated) {
+      store.error = `PDF 页数超过上限 ${PDF_PAGE_LIMIT}，仅导入前 ${PDF_PAGE_LIMIT} 页。`
+    }
+  } catch (error) {
+    store.error = pdfErrorMessage(error) ?? friendlyError(error)
+  } finally {
+    pdfBusy.value = false
+    pdfMessage.value = ''
+  }
+}
 function zoomIn(): void {
   canvas.value?.zoomBy(1.2)
 }
@@ -321,7 +356,7 @@ async function confirmAddToBook(): Promise<void> {
 <template>
   <section class="workspace-page">
     <div
-      v-if="store.enhancing || store.erasing || store.aiTask"
+      v-if="store.enhancing || store.erasing || store.aiTask || pdfBusy"
       class="app-loading-mask"
       role="status"
     >
@@ -379,6 +414,16 @@ async function confirmAddToBook(): Promise<void> {
         @click="scannerImport"
       >
         <ScanLine :size="17" />
+      </button>
+      <button
+        class="primary-button icon-action"
+        type="button"
+        data-tip="导入 PDF"
+        aria-label="导入 PDF"
+        :disabled="pdfBusy"
+        @click="importPdf"
+      >
+        <FileText :size="17" />
       </button>
       <span class="toolbar-divider" />
       <div class="segmented">

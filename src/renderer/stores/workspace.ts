@@ -61,8 +61,8 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.error = friendlyError(error)
       }
     },
-    async addScannerImage(dataUrl: string): Promise<void> {
-      const image = await desktopAPI.registerScannerImage(dataUrl)
+    async addScannerImage(dataUrl: string, name?: string): Promise<void> {
+      const image = await desktopAPI.registerScannerImage(dataUrl, name)
       this.images.push({ ...image, quarterTurns: 0, fineAngle: 0, selections: [] })
       this.activeImageId ||= image.id
     },

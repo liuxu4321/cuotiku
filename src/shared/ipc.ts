@@ -9,6 +9,9 @@ import type {
   BookAddRequest,
   BookPageRequest,
   BookRandomRequest,
+  BookPracticeRecord,
+  BookPracticeRecordRequest,
+  BookUpdateRequest,
   BookRandomResult,
   CaptchaInfo,
   ChangePasswordRequest,
@@ -21,6 +24,7 @@ import type {
   PagePreview,
   PagePreviewRequest,
   PaperProcessResult,
+  PdfFilePayload,
   PlatformInfo,
   PrinterInfo,
   RuntimeConfig,
@@ -36,6 +40,7 @@ export const ipcChannels = {
   appNavigate: 'app:navigate',
   appOpenExternal: 'app:open-external',
   imagesSelect: 'images:select',
+  pdfSelect: 'pdf:select',
   imagesEnhance: 'images:enhance',
   imagesErase: 'images:erase',
   imagesSplit: 'images:split',
@@ -58,6 +63,8 @@ export const ipcChannels = {
   bookAdd: 'book:add',
   bookList: 'book:list',
   bookRemove: 'book:remove',
+  bookUpdate: 'book:update',
+  bookAddPractice: 'book:add-practice',
   bookBuildPreview: 'book:build-preview',
   bookPrint: 'book:print',
   bookPractice: 'book:practice',
@@ -81,13 +88,17 @@ export interface IpcInvokeMap {
   [ipcChannels.appGetRuntimeConfig]: { args: []; result: RuntimeConfig }
   [ipcChannels.appOpenExternal]: { args: [url: string]; result: void }
   [ipcChannels.imagesSelect]: { args: []; result: ImportedImage[] }
+  [ipcChannels.pdfSelect]: { args: []; result: PdfFilePayload | null }
   [ipcChannels.imagesEnhance]: { args: [id: string]; result: EnhanceResult }
   [ipcChannels.imagesErase]: { args: [id: string]; result: EnhanceResult }
   [ipcChannels.imagesSplit]: { args: [id: string]; result: SplitResult }
   [ipcChannels.imagesPaperProcess]: { args: [id: string]; result: PaperProcessResult }
   [ipcChannels.agentExplain]: { args: [request: AgentRequest]; result: AgentExplainResult }
   [ipcChannels.agentAnalogy]: { args: [request: AgentRequest]; result: AgentAnalogyResult }
-  [ipcChannels.imagesRegisterScanner]: { args: [dataUrl: string]; result: ImportedImage }
+  [ipcChannels.imagesRegisterScanner]: {
+    args: [dataUrl: string, name?: string]
+    result: ImportedImage
+  }
   [ipcChannels.imagesProcessCrops]: { args: [request: CropRequest]; result: CropResultSet }
   [ipcChannels.authCaptcha]: { args: []; result: CaptchaInfo }
   [ipcChannels.authLogin]: { args: [request: LoginRequest]; result: AuthSession }
@@ -102,6 +113,11 @@ export interface IpcInvokeMap {
   [ipcChannels.bookAdd]: { args: [request: BookAddRequest]; result: number }
   [ipcChannels.bookList]: { args: []; result: CollectionEntry[] }
   [ipcChannels.bookRemove]: { args: [id: string]; result: void }
+  [ipcChannels.bookUpdate]: { args: [id: string, request: BookUpdateRequest]; result: void }
+  [ipcChannels.bookAddPractice]: {
+    args: [id: string, request: BookPracticeRecordRequest]
+    result: BookPracticeRecord
+  }
   [ipcChannels.bookBuildPreview]: { args: [request: BookPageRequest]; result: PagePreview }
   [ipcChannels.bookPrint]: { args: [request: BookPageRequest]; result: boolean }
   [ipcChannels.bookPractice]: { args: [ids: string[]]; result: void }

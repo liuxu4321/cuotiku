@@ -153,7 +153,7 @@ function dateLabel(value: number): string {
 </script>
 
 <template>
-  <PageHeader title="千锤百炼" />
+  <PageHeader title="温故知新" />
   <div v-if="store.error" class="workspace-alert">
     <span>{{ store.error }}</span
     ><button type="button" @click="store.error = null">关闭</button>
@@ -211,7 +211,7 @@ function dateLabel(value: number): string {
         </span>
       </div>
       <div v-if="!auth.loggedIn" class="panel-empty book-empty">
-        <p>千锤百炼为会员功能，请先登录。</p>
+        <p>温故知新为会员功能，请先登录。</p>
         <button type="button" class="primary-button" @click="loginDialog = true">立即登录</button>
       </div>
       <AppLoading

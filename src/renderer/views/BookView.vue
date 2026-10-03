@@ -181,7 +181,7 @@ async function confirmRandom(): Promise<void> {
 
 <template>
   <section class="book-page">
-    <PageHeader title="温故知新" />
+    <PageHeader title="千锤百炼" />
     <div v-if="store.error" class="workspace-alert">
       <span>{{ store.error }}</span
       ><button type="button" @click="store.error = null">关闭</button>
@@ -294,7 +294,7 @@ async function confirmRandom(): Promise<void> {
           </span>
         </div>
         <div v-if="!auth.loggedIn" class="panel-empty book-empty">
-          温故知新为登录功能，登录后即可使用云端错题本。
+          千锤百炼为登录功能，登录后即可使用云端错题本。
           <span class="book-cta-actions">
             <button class="primary-button" type="button" @click="loginDialog = true">登录</button>
           </span>

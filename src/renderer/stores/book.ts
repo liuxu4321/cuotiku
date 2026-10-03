@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { desktopAPI } from '@renderer/services/desktop-api'
 import { friendlyError } from './app'
-import type { BookPageRequest, CollectionEntry, PagePreview } from '@shared/types'
+import type {
+  BookPageRequest,
+  BookPracticeRecordRequest,
+  BookUpdateRequest,
+  CollectionEntry,
+  PagePreview,
+} from '@shared/types'
 
 export const useBookStore = defineStore('book', {
   state: () => ({
@@ -29,6 +35,35 @@ export const useBookStore = defineStore('book', {
       try {
         await desktopAPI.removeBookEntry(id)
         this.entries = this.entries.filter((entry) => entry.id !== id)
+      } catch (error) {
+        this.error = friendlyError(error)
+      }
+    },
+    async removeMany(ids: string[]) {
+      if (!ids.length) return
+      this.error = null
+      try {
+        for (const id of ids) await desktopAPI.removeBookEntry(id)
+        this.entries = this.entries.filter((entry) => !ids.includes(entry.id))
+      } catch (error) {
+        this.error = friendlyError(error)
+        await this.refresh()
+      }
+    },
+    async update(id: string, request: BookUpdateRequest) {
+      this.error = null
+      try {
+        await desktopAPI.updateBookEntry(id, request)
+        await this.refresh()
+      } catch (error) {
+        this.error = friendlyError(error)
+      }
+    },
+    async addPractice(id: string, request: BookPracticeRecordRequest) {
+      this.error = null
+      try {
+        await desktopAPI.addBookPractice(id, request)
+        await this.refresh()
       } catch (error) {
         this.error = friendlyError(error)
       }

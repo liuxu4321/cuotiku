@@ -24,6 +24,7 @@ function createFallbackAPI(): DesktopAPI {
     onNavigate: vi.fn(() => () => undefined),
     async openExternal() {},
     selectImages: vi.fn(async () => []),
+    selectPdf: vi.fn(async () => null),
     registerScannerImage: vi.fn(async () => ({
       id: 'scanner',
       name: 'scanner.jpg',
@@ -81,6 +82,15 @@ function createFallbackAPI(): DesktopAPI {
     listBookEntries: vi.fn(async () => []),
     addBookEntries: vi.fn(async () => 0),
     removeBookEntry: vi.fn(async () => undefined),
+    updateBookEntry: vi.fn(async () => undefined),
+    addBookPractice: vi.fn(async () => ({
+      id: 1,
+      entryId: 'e',
+      practicedAt: 0,
+      practicedAtText: '',
+      answerContent: null,
+      correct: true,
+    })),
     buildBookPreview: vi.fn(async () => ({ pages: [], columns: 1, scalePercent: 100 })),
     printBook: vi.fn(async () => true),
     printSvgPages: vi.fn(async () => true),

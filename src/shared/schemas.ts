@@ -78,11 +78,30 @@ export const collectionEntrySchema = z.object({
   height: z.number().int().positive(),
   practiceCount: z.number().int().nonnegative(),
   thumbDataUrl: z.string(),
+  remark: z.string().nullable(),
+  answer: z.string().nullable(),
+  recordCount: z.number().int().nonnegative(),
+  correctCount: z.number().int().nonnegative(),
+  accuracy: z.number().nullable(),
+  lastPracticedAt: z.number().nullable(),
 })
 export const bookEntryIdSchema = z.string().min(1)
 export const imageIdSchema = z.string().min(1)
 export const dataUrlSchema = z.string().min(1)
 export const bookPracticeSchema = z.array(z.string().min(1)).min(1)
+export const bookUpdateRequestSchema = z.object({
+  grade: z.number().int().min(1).max(12).optional(),
+  term: termSchema.optional(),
+  subject: subjectSchema.optional(),
+  errorType: errorTypeSchema.optional(),
+  remark: z.string().max(1000).nullable().optional(),
+  answer: z.string().max(1000).nullable().optional(),
+})
+export const bookPracticeRecordRequestSchema = z.object({
+  correct: z.boolean(),
+  answerContent: z.string().max(2000).nullable().optional(),
+  practicedAt: z.number().int().optional(),
+})
 export const agentRequestSchema = z.object({
   entryId: z.string().min(1).optional(),
   imageBase64: z.string().min(1).optional(),

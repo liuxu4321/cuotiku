@@ -2,6 +2,9 @@ import sharp from 'sharp'
 import type {
   BookAddRequest,
   BookEntryDto,
+  BookPracticeRecord,
+  BookPracticeRecordRequest,
+  BookUpdateRequest,
   BookRandomRequest,
   BookRandomResult,
   CollectionEntry,
@@ -53,9 +56,26 @@ export async function listEntries(): Promise<CollectionEntry[]> {
       height: item.height,
       practiceCount: item.practiceCount,
       thumbDataUrl: await thumbFor(item),
+      remark: item.remark ?? null,
+      answer: item.answer ?? null,
+      recordCount: item.recordCount ?? 0,
+      correctCount: item.correctCount ?? 0,
+      accuracy: item.accuracy ?? null,
+      lastPracticedAt: item.lastPracticedAt ?? null,
     })
   }
   return entries
+}
+
+export async function updateEntry(id: string, body: BookUpdateRequest): Promise<void> {
+  await api.bookUpdate(id, body)
+}
+
+export async function addPractice(
+  id: string,
+  body: BookPracticeRecordRequest,
+): Promise<BookPracticeRecord> {
+  return api.bookAddPractice(id, body)
 }
 
 export async function removeEntry(id: string): Promise<void> {

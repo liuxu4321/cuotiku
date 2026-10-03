@@ -121,6 +121,12 @@ export interface CollectionEntry {
   height: number
   practiceCount: number
   thumbDataUrl: string
+  remark: string | null
+  answer: string | null
+  recordCount: number
+  correctCount: number
+  accuracy: number | null
+  lastPracticedAt: number | null
 }
 export interface BookAddItem {
   errorType: ErrorType
@@ -138,6 +144,33 @@ export interface BookEntryDto {
   practiceCount: number
   imageUrl: string
   thumbUrl: string
+  remark: string | null
+  answer: string | null
+  recordCount: number
+  correctCount: number
+  accuracy: number | null
+  lastPracticedAt: number | null
+}
+export interface BookPracticeRecord {
+  id: number
+  entryId: string
+  practicedAt: number
+  practicedAtText: string
+  answerContent: string | null
+  correct: boolean
+}
+export interface BookPracticeRecordRequest {
+  correct: boolean
+  answerContent?: string | null | undefined
+  practicedAt?: number | undefined
+}
+export interface BookUpdateRequest {
+  grade?: number | undefined
+  term?: Term | undefined
+  subject?: Subject | undefined
+  errorType?: ErrorType | undefined
+  remark?: string | null | undefined
+  answer?: string | null | undefined
 }
 export interface BookAddRequest {
   resultSetId: string
@@ -265,6 +298,10 @@ export interface ChangePasswordRequest {
   oldPassword: string
   newPassword: string
 }
+export interface PdfFilePayload {
+  name: string
+  bytes: Uint8Array
+}
 export interface AuthSession {
   phone: string
   memberNo: string | null
@@ -298,7 +335,8 @@ export interface DesktopAPI {
   onNavigate(callback: (route: AppRoute) => void): () => void
   openExternal(url: string): Promise<void>
   selectImages(): Promise<ImportedImage[]>
-  registerScannerImage(dataUrl: string): Promise<ImportedImage>
+  selectPdf(): Promise<PdfFilePayload | null>
+  registerScannerImage(dataUrl: string, name?: string): Promise<ImportedImage>
   enhanceImage(id: string): Promise<EnhanceResult>
   processCrops(request: CropRequest): Promise<CropResultSet>
   eraseImage(id: string): Promise<EnhanceResult>
@@ -318,6 +356,8 @@ export interface DesktopAPI {
   listBookEntries(): Promise<CollectionEntry[]>
   addBookEntries(request: BookAddRequest): Promise<number>
   removeBookEntry(id: string): Promise<void>
+  updateBookEntry(id: string, request: BookUpdateRequest): Promise<void>
+  addBookPractice(id: string, request: BookPracticeRecordRequest): Promise<BookPracticeRecord>
   buildBookPreview(request: BookPageRequest): Promise<PagePreview>
   printBook(request: BookPageRequest): Promise<boolean>
   printSvgPages(request: SvgPagesRequest): Promise<boolean>

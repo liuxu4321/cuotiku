@@ -1,5 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { OpenDialogOptions } from 'electron'
+import { readFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 import sharp from 'sharp'
 import log from 'electron-log/main'
 import { ipcChannels, type IpcChannel, type IpcInvokeMap } from '@shared/ipc'
@@ -11,6 +13,8 @@ import {
   bookEntryIdSchema,
   bookPageRequestSchema,
   bookPracticeSchema,
+  bookPracticeRecordRequestSchema,
+  bookUpdateRequestSchema,
   changePasswordRequestSchema,
   svgPagesRequestSchema,
   bookRandomRequestSchema,
@@ -46,11 +50,13 @@ import { runAgentAnalogy, runAgentExplain } from '@main/services/agent-service'
 import { getRuntimeConfig } from '@main/services/runtime-config'
 import {
   addEntries,
+  addPractice,
   bumpPracticeCount,
   getEntryBuffers,
   listEntries,
   randomPaper,
   removeEntry,
+  updateEntry,
 } from '@main/services/book-service'
 import {
   applyBookNote,
@@ -110,6 +116,21 @@ export function registerIpcHandlers(updateService: UpdateService): void {
     if (result.canceled) return []
     return Promise.all(result.filePaths.map(registerImage))
   })
+  ipcMain.handle(ipcChannels.pdfSelect, async (event) => {
+    const parent = BrowserWindow.fromWebContents(event.sender)
+    const options: OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: [{ name: 'PDF 文档', extensions: ['pdf'] }],
+    }
+    const result = parent
+      ? await dialog.showOpenDialog(parent, options)
+      : await dialog.showOpenDialog(options)
+    if (result.canceled || !result.filePaths.length) return null
+    const filePath = result.filePaths[0]!
+    const buffer = await readFile(filePath)
+    if (buffer.length > 200 * 1024 * 1024) throw new Error('PDF 超过 200MB，请拆分后再导入。')
+    return { name: basename(filePath), bytes: new Uint8Array(buffer) }
+  })
   handle(ipcChannels.imagesProcessCrops, (value) => processCrops(cropRequestSchema.parse(value)))
   handle(ipcChannels.imagesEnhance, (id) => enhanceImage(imageIdSchema.parse(id)))
   handle(ipcChannels.imagesErase, (id) => eraseRegisteredImage(imageIdSchema.parse(id)))
@@ -117,8 +138,8 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   handle(ipcChannels.imagesPaperProcess, (id) => processPaper(imageIdSchema.parse(id)))
   handle(ipcChannels.agentExplain, (value) => runAgentExplain(agentRequestSchema.parse(value)))
   handle(ipcChannels.agentAnalogy, (value) => runAgentAnalogy(agentRequestSchema.parse(value)))
-  handle(ipcChannels.imagesRegisterScanner, (dataUrl) =>
-    registerImageDataUrl(dataUrlSchema.parse(dataUrl)),
+  handle(ipcChannels.imagesRegisterScanner, (dataUrl, name) =>
+    registerImageDataUrl(dataUrlSchema.parse(dataUrl), name),
   )
   handle(ipcChannels.authCaptcha, () => getCaptcha())
   handle(ipcChannels.authLogin, async (value) => {
@@ -225,6 +246,12 @@ export function registerIpcHandlers(updateService: UpdateService): void {
   handle(ipcChannels.bookRemove, async (id) => {
     await removeEntry(bookEntryIdSchema.parse(id))
   })
+  handle(ipcChannels.bookUpdate, (id, value) =>
+    updateEntry(bookEntryIdSchema.parse(id), bookUpdateRequestSchema.parse(value)),
+  )
+  handle(ipcChannels.bookAddPractice, (id, value) =>
+    addPractice(bookEntryIdSchema.parse(id), bookPracticeRecordRequestSchema.parse(value)),
+  )
   handle(ipcChannels.bookBuildPreview, async (value) => {
     const request = bookPageRequestSchema.parse(value)
     const crops = await notedCrops(request.entryIds)
